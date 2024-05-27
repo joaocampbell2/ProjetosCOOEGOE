@@ -71,7 +71,7 @@ def encontrarFormaDePagamento(navegador):
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
             try:
-                beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" )
+                beneficiario = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
                 print(beneficiario.text)
                 if  "CPF" in beneficiario.text:
                     formaPagamento = "Depósito"
@@ -81,31 +81,27 @@ def encontrarFormaDePagamento(navegador):
                     
                     return formaPagamento
 
-
-                
-
-                
-
-
-                formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
-                print(formaPagamentoDespacho.text)
-                
-                formaPagamento = ""
-
-                if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text:
-                    formaPagamento = "Guia"
-                if "GUIA" in formaPagamentoDespacho.text:
-                    formaPagamento = "Guia"
+                if "CNPJ" in beneficiario.text:
+            
+                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
+                    print(formaPagamentoDespacho.text)
+                    
+                    if "GUIA" in formaPagamentoDespacho.text:
+                        formaPagamento = "Guia"
+                    if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text:
+                        formaPagamento = "Guia"
+                    elif "DEPÓSITO" in formaPagamentoDespacho.text:
+                        formaPagamento = "Depósito"
 
 
-                navegador.close()
-                navegador.switch_to.window(navegador.window_handles[0])
+                    navegador.close()
+                    navegador.switch_to.window(navegador.window_handles[0])
 
 
-                return formaPagamento
+                    return formaPagamento
             
 
-
+                return ""
             except:
                 traceback.print_exc()
 
@@ -138,7 +134,7 @@ def anotarFormaDePagamento(processo,formaPagamento,navegador):
         navegador.switch_to.default_content()
 
 
-processo = input("Digite o número do processo: ")
+processo = input("Digite o número do bloco: ")
 
 navegador = webdriver.Edge()
 login(navegador)
