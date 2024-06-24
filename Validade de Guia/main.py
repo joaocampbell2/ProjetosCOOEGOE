@@ -97,30 +97,34 @@ def encontrarFormaDePagamento(navegador):
             WebDriverWait(navegador,10).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
             WebDriverWait(navegador,10).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
             try:
-                beneficiario = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
+                beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" )
+                beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
                 print(beneficiario.text)
-                if  "CPF" in beneficiario.text:
+                if  "CPF" in beneficiario.text or "CPF" in beneficiario2.text:
                     formaPagamento = "Depósito"
                     
                     
                     
                     return formaPagamento
 
-                if "CNPJ" in beneficiario.text:
+                if "CNPJ" in beneficiario.text or "CPF" in beneficiario2.text:
             
-                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
+                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
+                    forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
                     print(formaPagamentoDespacho.text)
                     
                     formaPagamento = ""
                     
-                    if "GUIA" in formaPagamentoDespacho.text:
+                    if "GUIA" in formaPagamentoDespacho.text or "GUIA" in forma2.text:
                         formaPagamento = "Guia"
-                    if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text:
+                    if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text or "DEPÓSITO JUDICIAL" in forma2.text:
                         formaPagamento = "Guia"
-                    elif "DEPÓSITO" in formaPagamentoDespacho.text:
+                    elif "DEPÓSITO" in formaPagamentoDespacho.text or "DEPÓSITO" in forma2.text:
                         formaPagamento = "Depósito"
-                    if "GRU" in formaPagamentoDespacho.text:
+                    if "GRU" in formaPagamentoDespacho.text or "GRU" in forma2.text:
                         formaPagamento = "Guia GRU"
+                    if "GRERJ" in formaPagamentoDespacho.text or "GRERJ" in forma2.text:
+                        formaPagamento = "Guia"
 
 
               
@@ -175,7 +179,7 @@ def encontrarValidade(navegador):
     quantDocs = len(docs)
     for doc in range(quantDocs):
         docTexto = docs[doc].text
-        if "Guia" in docTexto:
+        if "Guia" in docTexto or "GRERJ" in docTexto:
             docs[doc].click()
             time.sleep(2)
             
@@ -188,8 +192,11 @@ def encontrarValidade(navegador):
                 if "BANCO DO BRASIL" in span.get_attribute("innerHTML").upper():
                     guia = "Guia BB" 
                     break
+                if "GRERJ" in span.get_attribute("innerHTML").upper():
+                    guia = "Guia GRERJ"
+                    break
                 
-            if guia == "Guia BB":
+            if guia == "Guia BB" or guia == "Guia GRERJ":
                 for span in spans:
                     #Regex pra achar as datas
                     regex = re.match("^\d{2}\/\d{2}\/\d{4}$",span.get_attribute('innerHTML'))
