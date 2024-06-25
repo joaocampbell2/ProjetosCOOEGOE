@@ -36,7 +36,7 @@ def login(navegador):
 
     navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
 
-def encontrarProcessos(navegador,blocoSolicitado,df):
+def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
     navegador.find_element(By.XPATH, "//span[text() = 'Blocos']").click()
     WebDriverWait(navegador,20).until(EC.element_to_be_clickable((By.XPATH, "//span[text() = 'Internos']"))).click()
     blocos = navegador.find_elements(By.XPATH, "//tbody//tr")[1:-1]
@@ -53,24 +53,24 @@ def encontrarProcessos(navegador,blocoSolicitado,df):
         time.sleep(1)
         processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
         nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
-        if nProcesso not in df['PROCESSO'].values:
-            if  "Administrativo: Elaboração de Correspondência Interna" not in processo.find_element(By.XPATH, './/td[4]').text:
-                
-            
-                WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a'))))
-                time.sleep(1)
+        if nProcesso not in df['PROCESSO'].values:                          
+            WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a'))))
+            time.sleep(1)
 
-                processo.find_element(By.XPATH, './/td[3]//a').click()
-                time.sleep(3)
+            processo.find_element(By.XPATH, './/td[3]//a').click()
+            time.sleep(3)
+            if tipo == "FIANÇA":
+
                 try:
-                    formaDePagamento = encontrarFormaDePagamento(navegador) 
+                    
+                    formaDePagamento = encontrarFormaDePagamento(navegador,tipo) 
                     validade = "-"
                     if formaDePagamento == "Guia GRU":
                         validade = "Sem Validade"
                     if formaDePagamento == "Guia":
                         print("Buscando Validade...")
                         navegador.switch_to.default_content()
-                        validade,formaDePagamento = encontrarValidade(navegador)
+                        validade,formaDePagamento = encontrarValidade(navegador, "FIANÇA")
                     df.loc[len(df)] = {"PROCESSO":nProcesso,"FORMA DE PAGAMENTO": formaDePagamento,"VALIDADE": validade}
                     salvarPlanilha(df)
                 except:
@@ -85,6 +85,18 @@ def encontrarProcessos(navegador,blocoSolicitado,df):
 
                 except:
                     traceback.print_exc()
+            if tipo == "EXECUÇÃO FISCAL":
+                try:
+                    navegador.switch_to.window(navegador.window_handles[1])
+                    validade,formaDePagamento = encontrarValidade(navegador, "EXECUÇÃO FISCAL")
+                    print(formaDePagamento, validade)
+                    df.loc[len(df)] = {"PROCESSO":nProcesso,"FORMA DE PAGAMENTO": formaDePagamento,"VALIDADE": validade}
+                    salvarPlanilha(df)
+                except:
+                    traceback.print_exc()
+                finally:
+                    navegador.close()
+                    navegador.switch_to.window(navegador.window_handles[0])
             
                 
         
@@ -95,11 +107,15 @@ def encontrarFormaDePagamento(navegador):
     docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
 
     for doc in docs:
-        docTexto = doc.text
+        try:
+            docTexto = doc.text
+            doc.click()
+
+        except:
+            pass
         if "Despacho sobre Autorização de Despesa" in docTexto:
             
             
-            doc.click()
             time.sleep(2)
             
             navegador.switch_to.default_content()            
@@ -185,43 +201,67 @@ def anotarFormaDePagamento(processo,formaPagamento,navegador,validade):
     finally:
         navegador.switch_to.default_content()
 
-def encontrarValidade(navegador):
+def encontrarValidade(navegador, tipo):
     navegador.switch_to.default_content()
     WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
     docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
     quantDocs = len(docs)
-    for doc in range(quantDocs):
-        docTexto = docs[doc].text
-        if "Guia" in docTexto or "GRERJ" in docTexto:
-            docs[doc].click()
-            time.sleep(2)
-            
-            navegador.switch_to.default_content()            
-            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
-            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
-            spans = navegador.find_elements(By.XPATH, '//span')
-            guia = ""
-            for span in spans:
-                if "BANCO DO BRASIL" in span.get_attribute("innerHTML").upper():
-                    guia = "Guia BB" 
-                    break
-                if "GRERJ" in span.get_attribute("innerHTML").upper():
-                    guia = "Guia GRERJ"
-                    break
-                
-            if guia == "Guia BB" or guia == "Guia GRERJ":
-                for span in spans:
-                    #Regex pra achar as datas
-                    regex = re.match("^\d{2}\/\d{2}\/\d{4}$",span.get_attribute('innerHTML'))
-                    if regex:
-                        validade = regex.group()
-                        return validade,guia
-            
-            navegador.switch_to.default_content()            
-            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
-            docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")    
+    if tipo == "FIANÇA":
     
-    return "","Guia"      
+        for doc in range(quantDocs):
+            docTexto = docs[doc].text
+            if "Guia" in docTexto or "GRERJ" in docTexto:
+                docs[doc].click()
+                time.sleep(2)
+                
+                navegador.switch_to.default_content()            
+                WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
+                WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
+                spans = navegador.find_elements(By.XPATH, '//span')
+                guia = ""
+                for span in spans:
+                    if "BANCO DO BRASIL" in span.get_attribute("innerHTML").upper():
+                        guia = "Guia BB" 
+                        break
+                    if "GRERJ" in span.get_attribute("innerHTML").upper():
+                        guia = "Guia GRERJ"
+                        break
+                    
+                if guia == "Guia BB" or guia == "Guia GRERJ":
+                    for span in spans:
+                        #Regex pra achar as datas
+                        regex = re.match("^\d{2}\/\d{2}\/\d{4}$",span.get_attribute('innerHTML'))
+                        if regex:
+                            validade = regex.group()
+                            return validade,guia
+                
+                navegador.switch_to.default_content()            
+                WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
+                docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")    
+        
+        return "","Guia" 
+    if tipo =="EXECUÇÃO FISCAL":
+        for doc in range(quantDocs):
+            docTexto = docs[doc].text
+            if "Despacho sobre Autorização de Despesa" in docTexto:
+                try:
+                    docs[doc].click()
+                    time.sleep(2)
+                    
+                    navegador.switch_to.default_content()            
+                    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
+                    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
+                    
+                    body = navegador.find_element(By.TAG_NAME, "body")
+                    validade = re.search(r"\bvalidade de (.*?)\b do referido",body.text).group(1)
+                    
+                    return validade, "DARJ"
+                except:
+                    navegador.switch_to.default_content()            
+                    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
+                    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")    
+                    pass
+        return "", ""
 
 def salvarPlanilha(df):
     writer = pd.ExcelWriter(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace')
@@ -245,11 +285,19 @@ try:
 except:
     df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE","ACOMPANHAMENTO ESPECIAL"], index=None)
 
+tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal"))
+
+match tipo:
+    case 1:
+        tipo = "FIANÇA"
+    case 2:
+        tipo = "EXECUÇÃO FISCAL"
+
 
 salvarPlanilha(df)
 
 navegador = webdriver.Firefox()
 login(navegador)
 
-encontrarProcessos(navegador,bloco,df)
+encontrarProcessos(navegador,bloco,df,tipo)
 navegador.quit()
