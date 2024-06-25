@@ -1,6 +1,7 @@
 import time
 from time import sleep
 import traceback
+from openpyxl import load_workbook
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -35,7 +36,7 @@ def login(navegador):
 
     navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
 
-def encontrarProcessos(navegador,blocoSolicitado):
+def encontrarProcessos(navegador,blocoSolicitado,df):
     navegador.find_element(By.XPATH, "//span[text() = 'Blocos']").click()
     WebDriverWait(navegador,20).until(EC.element_to_be_clickable((By.XPATH, "//span[text() = 'Internos']"))).click()
     blocos = navegador.find_elements(By.XPATH, "//tbody//tr")[1:-1]
@@ -45,39 +46,47 @@ def encontrarProcessos(navegador,blocoSolicitado):
         if nBloco.text == blocoSolicitado:
             nBloco.find_element(By.XPATH, './/a').click()
             break
-    processos = navegador.find_elements(By.XPATH, "//tbody//tr")[1:]
+    processos = navegador.find_elements(By.XPATH, "//tbody//tr")
 
     for i in range(1,len(processos)):
         WebDriverWait(navegador,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
-
+        time.sleep(1)
         processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
-        if  "Administrativo: Elaboração de Correspondência Interna" not in processo.find_element(By.XPATH, './/td[4]').text:
+        nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
+        if nProcesso not in df['PROCESSO'].values:
+            if  "Administrativo: Elaboração de Correspondência Interna" not in processo.find_element(By.XPATH, './/td[4]').text:
+                
             
-        
-            WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a'))))
-            processo.find_element(By.XPATH, './/td[3]//a').click()
-            time.sleep(3)
-            try:
-                formaDePagamento = encontrarFormaDePagamento(navegador) 
-                validade = "Não"
-                if formaDePagamento == "Guia GRU":
-                    validade = "Sem Validade"
-                if formaDePagamento == "Guia":
-                    print("Buscando Validade...")
+                WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a'))))
+                time.sleep(1)
+
+                processo.find_element(By.XPATH, './/td[3]//a').click()
+                time.sleep(3)
+                try:
+                    formaDePagamento = encontrarFormaDePagamento(navegador) 
+                    validade = "-"
+                    if formaDePagamento == "Guia GRU":
+                        validade = "Sem Validade"
+                    if formaDePagamento == "Guia":
+                        print("Buscando Validade...")
+                        navegador.switch_to.default_content()
+                        validade,formaDePagamento = encontrarValidade(navegador)
+                    df.loc[len(df)] = {"PROCESSO":nProcesso,"FORMA DE PAGAMENTO": formaDePagamento,"VALIDADE": validade}
+                    salvarPlanilha(df)
+                except:
+                    traceback.print_exc()
+                    pass
+                finally:
+                    navegador.close()
+                    navegador.switch_to.window(navegador.window_handles[0])
+                try:
+                    anotarFormaDePagamento(processo, formaDePagamento,navegador,validade)
                     navegador.switch_to.default_content()
-                    validade,formaDePagamento = encontrarValidade(navegador)         
-            except:
-                traceback.print_exc()
-                pass
-            finally:
-                navegador.close()
-                navegador.switch_to.window(navegador.window_handles[0])
-            try:
-                anotarFormaDePagamento(processo, formaDePagamento,navegador,validade)
-            except:
-                traceback.print_exc()
-           
+
+                except:
+                    traceback.print_exc()
             
+                
         
         
 def encontrarFormaDePagamento(navegador):
@@ -99,7 +108,12 @@ def encontrarFormaDePagamento(navegador):
             try:
                 beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" )
                 beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
+                formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
+                forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
                 print(beneficiario.text)
+                if "BRADESCO" in formaPagamentoDespacho.text.upper() or "BRADESCO" in forma2.text.upper():
+                    formaPagamento = "Depósito Bradesco"
+                    return formaPagamento
                 if  "CPF" in beneficiario.text or "CPF" in beneficiario2.text:
                     formaPagamento = "Depósito"
                     
@@ -107,10 +121,9 @@ def encontrarFormaDePagamento(navegador):
                     
                     return formaPagamento
 
-                if "CNPJ" in beneficiario.text or "CPF" in beneficiario2.text:
+                if "CNPJ" in beneficiario.text or "CNPJ" in beneficiario2.text:
             
-                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
-                    forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
+                
                     print(formaPagamentoDespacho.text)
                     
                     formaPagamento = ""
@@ -140,37 +153,37 @@ def encontrarFormaDePagamento(navegador):
 def anotarFormaDePagamento(processo,formaPagamento,navegador,validade):
 
     print("Forma de Pagamento: " + formaPagamento)
-    if validade != "Não":
+    if validade != "-":
         print("Data de Validade da Guia: " + validade)
     
 
-    # processo.find_element(By.XPATH,".//td//a//img[@title='Anotações']").click()
+    processo.find_element(By.XPATH,".//td//a//img[@title='Anotações']").click()
                         
-    # time.sleep(2)
-    # try:
-    #     iframe = navegador.find_element(By.TAG_NAME, 'iframe')
-    #     navegador.switch_to.frame(iframe)
+    time.sleep(2)
+    try:
+        iframe = navegador.find_element(By.TAG_NAME, 'iframe')
+        navegador.switch_to.frame(iframe)
 
-    #     txtarea = navegador.find_element(By.XPATH, '//textarea[@id = "txtAnotacao"]')
+        txtarea = navegador.find_element(By.XPATH, '//textarea[@id = "txtAnotacao"]')
 
-    #     txtarea.send_keys(Keys.PAGE_DOWN)
-    #     txtarea.send_keys(Keys.END)
-    #     txtarea.send_keys(Keys.ENTER)
-    #     txtarea.send_keys("Forma de Pagamento: " + formaPagamento)
-    #     if validade != "Não":
-    #         txtarea.send_keys(Keys.ENTER)
-    #         txtarea.send_keys("Data de Validade da Guia: " + validade)
-    #     time.sleep(1)
-    #     salvar = navegador.find_element(By.XPATH, '//button[@value = "Salvar"]')
+        txtarea.send_keys(Keys.PAGE_DOWN)
+        txtarea.send_keys(Keys.END)
+        txtarea.send_keys(Keys.ENTER)
+        txtarea.send_keys("Forma de Pagamento: " + formaPagamento)
+        if validade != "-":
+            txtarea.send_keys(Keys.ENTER)
+            txtarea.send_keys("Data de Validade da Guia: " + validade)
+        time.sleep(1)
+        salvar = navegador.find_element(By.XPATH, '//button[@value = "Salvar"]')
 
-    #     salvar.click()
+        salvar.click()
         
-    # except:
-    #    traceback.print_exc()
-    #    time.sleep(1)
-    #    navegador.find_element(By.XPATH, "//div[@class = 'sparkling-modal-close']").click()
-    # finally:
-    #     navegador.switch_to.default_content()
+    except:
+       traceback.print_exc()
+       time.sleep(1)
+       navegador.find_element(By.XPATH, "//div[@class = 'sparkling-modal-close']").click()
+    finally:
+        navegador.switch_to.default_content()
 
 def encontrarValidade(navegador):
     navegador.switch_to.default_content()
@@ -210,9 +223,33 @@ def encontrarValidade(navegador):
     
     return "","Guia"      
 
+def salvarPlanilha(df):
+    writer = pd.ExcelWriter(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace')
+    df.to_excel(writer, sheet_name=bloco, index=False)
+    writer.close()
+
+
 bloco = input("Digite o número do bloco: ")
+
+wb = load_workbook(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx")
+
+if bloco not in wb.sheetnames:
+    wb.create_sheet(bloco,0)
+    wb.save(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx")
+
+df = pd.read_excel(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx", sheet_name=bloco)
+
+try:
+    print(df["PROCESSO"].values)
+
+except:
+    df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE","ACOMPANHAMENTO ESPECIAL"], index=None)
+
+
+salvarPlanilha(df)
 
 navegador = webdriver.Firefox()
 login(navegador)
 
-encontrarProcessos(navegador,bloco)
+encontrarProcessos(navegador,bloco,df)
+navegador.quit()
