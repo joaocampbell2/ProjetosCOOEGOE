@@ -47,10 +47,10 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
             nBloco.find_element(By.XPATH, './/a').click()
             break
     processos = navegador.find_elements(By.XPATH, "//tbody//tr")
+    time.sleep(1)
 
     for i in range(1,len(processos)):
         WebDriverWait(navegador,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
-        time.sleep(1)
         processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
         nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
         if nProcesso not in df['PROCESSO'].values:                          
@@ -63,7 +63,7 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
 
                 try:
                     
-                    formaDePagamento = encontrarFormaDePagamento(navegador,tipo) 
+                    formaDePagamento = encontrarFormaDePagamento(navegador) 
                     validade = "-"
                     if formaDePagamento == "Guia GRU":
                         validade = "Sem Validade"
@@ -79,17 +79,14 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                 finally:
                     navegador.close()
                     navegador.switch_to.window(navegador.window_handles[0])
-                try:
-                    anotarFormaDePagamento(processo, formaDePagamento,navegador,validade)
-                    navegador.switch_to.default_content()
-
-                except:
-                    traceback.print_exc()
+                
             if tipo == "EXECUÇÃO FISCAL":
                 try:
                     navegador.switch_to.window(navegador.window_handles[1])
                     validade,formaDePagamento = encontrarValidade(navegador, "EXECUÇÃO FISCAL")
                     print(formaDePagamento, validade)
+                    navegador.switch_to.default_content()
+ 
                     df.loc[len(df)] = {"PROCESSO":nProcesso,"FORMA DE PAGAMENTO": formaDePagamento,"VALIDADE": validade}
                     salvarPlanilha(df)
                 except:
@@ -97,6 +94,12 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                 finally:
                     navegador.close()
                     navegador.switch_to.window(navegador.window_handles[0])
+                try:
+                    anotarFormaDePagamento(processo, formaDePagamento,navegador,validade)
+                    navegador.switch_to.default_content()
+
+                except:
+                    traceback.print_exc()
             
                 
         
@@ -241,6 +244,8 @@ def encontrarValidade(navegador, tipo):
         
         return "","Guia" 
     if tipo =="EXECUÇÃO FISCAL":
+        validade= ""
+        
         for doc in range(quantDocs):
             docTexto = docs[doc].text
             if "Despacho sobre Autorização de Despesa" in docTexto:
@@ -255,13 +260,15 @@ def encontrarValidade(navegador, tipo):
                     body = navegador.find_element(By.TAG_NAME, "body")
                     validade = re.search(r"\bvalidade de (.*?)\b do referido",body.text).group(1)
                     
-                    return validade, "DARJ"
+                    
                 except:
+                    traceback.print_exc()
+                finally:
                     navegador.switch_to.default_content()            
                     WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
-                    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")    
-                    pass
-        return "", ""
+                    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")   
+                
+        return validade, "DARJ"
 
 def salvarPlanilha(df):
     writer = pd.ExcelWriter(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace')
@@ -283,9 +290,9 @@ try:
     print(df["PROCESSO"].values)
 
 except:
-    df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE","ACOMPANHAMENTO ESPECIAL"], index=None)
+    df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE","ACOMPANHAMENTO ESPECIAL","VALOR ORÇAMENTÁRIA", "VALOR EXTRAORÇAMENTÁRIA", "ERRO PAGAMENTO"], index=None)
 
-tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal"))
+tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
 
 match tipo:
     case 1:
