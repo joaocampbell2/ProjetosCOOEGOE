@@ -9,11 +9,10 @@ from selenium.webdriver.common.keys import  Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
-from selenium.webdriver.common.action_chains import ActionChains
 import os
-import sys
 import re
-
+from openpyxl.styles import PatternFill
+from openpyxl.formatting.rule import CellIsRule
 
 def login(navegador):
     navegador.get("https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI")
@@ -50,14 +49,14 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
     time.sleep(1)
 
     for i in range(1,len(processos)):
+        WebDriverWait(navegador,20).until(EC.invisibility_of_element_located(((By.XPATH, "//div[@class = 'sparkling-modal-close']"))))
         WebDriverWait(navegador,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
         processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
         nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
         if nProcesso not in df['PROCESSO'].values:                          
-            WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a'))))
-            time.sleep(1)
 
-            processo.find_element(By.XPATH, './/td[3]//a').click()
+            WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a')))).click()
+
             time.sleep(3)
             if tipo == "FIANÇA":
 
@@ -271,26 +270,65 @@ def encontrarValidade(navegador, tipo):
         return validade, "DARJ"
 
 def salvarPlanilha(df):
-    writer = pd.ExcelWriter(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace')
+    marinette = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx"
+    bloco = "869143"
+    df = pd.read_excel(marinette, sheet_name=bloco)
+
+
+    writer = pd.ExcelWriter(marinette, engine='openpyxl', mode='a', if_sheet_exists='replace')
     df.to_excel(writer, sheet_name=bloco, index=False)
     writer.close()
+
+    planilha = load_workbook(marinette)
+    tabela = planilha[bloco]
+    for linha in range(2,tabela.max_row + 1):
+        celula = tabela[f"D{linha}"]
+        celula.value = f'=C{linha}-TODAY()'
+
+
+
+    prazo = f'D2:D{tabela.max_row}'
+
+
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+
+        
+    red_rule = CellIsRule(operator='lessThan', formula=['0'], stopIfTrue=True, fill=red_fill)
+        
+    # Rule for cells with positive values (green)
+    green_rule = CellIsRule(operator='greaterThan', formula=['15'], stopIfTrue=True, fill=green_fill)
+    yellow_rule = CellIsRule(operator='lessThanOrEqual', formula=['15'], stopIfTrue=True, fill=yellow_fill)
+
+    # Add rules to the worksheet
+    tabela.conditional_formatting.add(prazo, red_rule)
+    tabela.conditional_formatting.add(prazo, green_rule)
+
+
+    planilha.save(marinette)
+    planilha.close()
+
+
+
+marinette = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx"
 
 
 bloco = input("Digite o número do bloco: ")
 
-wb = load_workbook(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx")
+wb = load_workbook(marinette)
 
 if bloco not in wb.sheetnames:
     wb.create_sheet(bloco,0)
-    wb.save(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx")
+    wb.save(marinette)
 
-df = pd.read_excel(r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx", sheet_name=bloco)
+df = pd.read_excel(marinette, sheet_name=bloco)
 
 try:
     print(df["PROCESSO"].values)
 
 except:
-    df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE","ACOMPANHAMENTO ESPECIAL","VALOR ORÇAMENTÁRIA", "VALOR EXTRAORÇAMENTÁRIA", "ERRO PAGAMENTO"], index=None)
+    df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR ORÇAMENTÁRIA", "VALOR EXTRAORÇAMENTÁRIA", "ERRO PAGAMENTO"], index=None)
 
 tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
 
