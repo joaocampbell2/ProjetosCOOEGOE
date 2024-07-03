@@ -271,43 +271,51 @@ def encontrarValidade(navegador, tipo):
 
 def salvarPlanilha(df):
     marinette = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx"
-    bloco = "869143"
     df = pd.read_excel(marinette, sheet_name=bloco)
 
-
+    #SALVA A TABELA SEM APAGAR AS OUTRAS
     writer = pd.ExcelWriter(marinette, engine='openpyxl', mode='a', if_sheet_exists='replace')
     df.to_excel(writer, sheet_name=bloco, index=False)
     writer.close()
 
     planilha = load_workbook(marinette)
     tabela = planilha[bloco]
+    
+    #FORMULA PARA PREENCHER A COLUNA DE PRAZO
     for linha in range(2,tabela.max_row + 1):
         celula = tabela[f"D{linha}"]
         celula.value = f'=C{linha}-TODAY()'
 
-
-
     prazo = f'D2:D{tabela.max_row}'
-
-
+    #CORES PARA PINTAR AS CELULAS
     red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
     green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-    yellow_fill = PatternFill(start_color="FFFFE0", end_color="FFFFE0", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFFE0", end_color="FFFF00", fill_type="solid")
+    #REGRAS PARA PINTAR AS COLUANS
+    red_rule = CellIsRule(operator='lessThanOrEqual', formula=['15'], stopIfTrue=True, fill=red_fill)
+    green_rule = CellIsRule(operator='greaterThanOrEqual', formula=['31'], stopIfTrue=True, fill=green_fill)
+    yellow_rule = CellIsRule(operator='between', formula=['15','31'], stopIfTrue=True, fill=yellow_fill)
 
-        
-    red_rule = CellIsRule(operator='lessThan', formula=['0'], stopIfTrue=True, fill=red_fill)
-        
-    # Rule for cells with positive values (green)
-    green_rule = CellIsRule(operator='greaterThan', formula=['15'], stopIfTrue=True, fill=green_fill)
-    yellow_rule = CellIsRule(operator='lessThanOrEqual', formula=['15'], stopIfTrue=True, fill=yellow_fill)
-
-    # Add rules to the worksheet
     tabela.conditional_formatting.add(prazo, red_rule)
     tabela.conditional_formatting.add(prazo, green_rule)
-
+    tabela.conditional_formatting.add(prazo,yellow_rule)
+    
+    #ALINHAR TAMANHO DAS CELULAS
+    for column in tabela.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2) * 1.2
+        tabela.column_dimensions[column_letter].width = adjusted_width
 
     planilha.save(marinette)
     planilha.close()
+    print("Formatação concluída")
 
 
 
@@ -322,7 +330,7 @@ if bloco not in wb.sheetnames:
     wb.create_sheet(bloco,0)
     wb.save(marinette)
 
-df = pd.read_excel(marinette, sheet_name=bloco)
+df = pd.read_excel(marinette, sheet_name=bloco, dtype={'VALIDADE': str})
 
 try:
     print(df["PROCESSO"].values)
