@@ -1,7 +1,6 @@
 import time
 from time import sleep
 import traceback
-from openpyxl import load_workbook
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -11,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import os
 import re
+from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from openpyxl.formatting.rule import CellIsRule
 
@@ -53,7 +53,7 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
         WebDriverWait(navegador,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
         processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
         nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
-        if nProcesso not in df['PROCESSO'].values:                          
+        if nProcesso not in df['PROCESSO'].values or pd.isna(df.loc[df[df["PROCESSO"] == nProcesso].index[0], "FORMA DE PAGAMENTO"]):                          
 
             WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a')))).click()
 
@@ -65,7 +65,7 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                     formaDePagamento = encontrarFormaDePagamento(navegador) 
                     validade = "-"
                     if formaDePagamento == "Guia GRU":
-                        validade = "Sem Validade"
+                        validade = "-"
                     if formaDePagamento == "Guia":
                         print("Buscando Validade...")
                         navegador.switch_to.default_content()
@@ -78,6 +78,13 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                 finally:
                     navegador.close()
                     navegador.switch_to.window(navegador.window_handles[0])
+                try:
+                    anotarFormaDePagamento(processo, formaDePagamento,navegador,validade)
+                    navegador.switch_to.default_content()
+
+                except:
+                    traceback.print_exc()
+            
                 
             if tipo == "EXECUÇÃO FISCAL":
                 try:
@@ -101,7 +108,13 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                     traceback.print_exc()
             
                 
-        
+def abrirPastas(navegador):
+    listaDocs = navegador.find_element(By.ID, "divArvore")
+    pastas = listaDocs.find_elements(By.XPATH, '//a[contains(@id, "joinPASTA")]')
+    for doc in pastas[:-1]:
+        doc.click() 
+        sleep(2)      
+
         
 def encontrarFormaDePagamento(navegador):
     navegador.switch_to.window(navegador.window_handles[1])
@@ -111,12 +124,11 @@ def encontrarFormaDePagamento(navegador):
     for doc in docs:
         try:
             docTexto = doc.text
-            doc.click()
-
         except:
             pass
         if "Despacho sobre Autorização de Despesa" in docTexto:
-            
+            doc.click()
+
             
             time.sleep(2)
             
@@ -206,6 +218,7 @@ def anotarFormaDePagamento(processo,formaPagamento,navegador,validade):
 def encontrarValidade(navegador, tipo):
     navegador.switch_to.default_content()
     WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
+    abrirPastas(navegador)
     docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
     quantDocs = len(docs)
     if tipo == "FIANÇA":
@@ -270,9 +283,6 @@ def encontrarValidade(navegador, tipo):
         return validade, "DARJ"
 
 def salvarPlanilha(df):
-    marinette = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx"
-    df = pd.read_excel(marinette, sheet_name=bloco)
-
     #SALVA A TABELA SEM APAGAR AS OUTRAS
     writer = pd.ExcelWriter(marinette, engine='openpyxl', mode='a', if_sheet_exists='replace')
     df.to_excel(writer, sheet_name=bloco, index=False)
@@ -280,11 +290,15 @@ def salvarPlanilha(df):
 
     planilha = load_workbook(marinette)
     tabela = planilha[bloco]
-    
+
     #FORMULA PARA PREENCHER A COLUNA DE PRAZO
     for linha in range(2,tabela.max_row + 1):
-        celula = tabela[f"D{linha}"]
-        celula.value = f'=C{linha}-TODAY()'
+        celulaD = tabela[f"D{linha}"]
+        celulaC = tabela[f"C{linha}"]
+        if celulaC.value == "-":
+            celulaD.value = "SEM PRAZO"
+        else:
+            celulaD.value = f'=C{linha}-TODAY()'
 
     prazo = f'D2:D{tabela.max_row}'
     #CORES PARA PINTAR AS CELULAS
@@ -296,10 +310,11 @@ def salvarPlanilha(df):
     green_rule = CellIsRule(operator='greaterThanOrEqual', formula=['31'], stopIfTrue=True, fill=green_fill)
     yellow_rule = CellIsRule(operator='between', formula=['15','31'], stopIfTrue=True, fill=yellow_fill)
 
-    tabela.conditional_formatting.add(prazo, red_rule)
-    tabela.conditional_formatting.add(prazo, green_rule)
-    tabela.conditional_formatting.add(prazo,yellow_rule)
-    
+    if tabela.max_row > 1:
+            tabela.conditional_formatting.add(prazo, red_rule)
+            tabela.conditional_formatting.add(prazo, green_rule)
+            tabela.conditional_formatting.add(prazo,yellow_rule)
+
     #ALINHAR TAMANHO DAS CELULAS
     for column in tabela.columns:
         max_length = 0
@@ -331,14 +346,18 @@ if bloco not in wb.sheetnames:
     wb.save(marinette)
 
 df = pd.read_excel(marinette, sheet_name=bloco, dtype={'VALIDADE': str})
+tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
 
 try:
     print(df["PROCESSO"].values)
 
 except:
-    df = pd.DataFrame(columns=["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR ORÇAMENTÁRIA", "VALOR EXTRAORÇAMENTÁRIA", "ERRO PAGAMENTO"], index=None)
+    if tipo == 1:
+        colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR EXTRAORÇAMENTÁRIA","VALOR ORÇAMENTÁRIA",  "OB EXTRAORÇAMENTÁRIA", "OB ORÇAMENTÁRIA"]
+    if tipo == 2:
+        colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL", "VALOR EXTRAORÇAMENTÁRIA", "OB EXTRAORÇAMENTÁRIA"]
+    df = pd.DataFrame(columns=colunas, index=None)
 
-tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
 
 match tipo:
     case 1:
