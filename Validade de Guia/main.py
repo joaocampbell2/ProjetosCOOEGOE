@@ -140,20 +140,16 @@ def encontrarFormaDePagamento(navegador):
                 beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
                 formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
                 forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
-                print(beneficiario.text)
+
                 if "BRADESCO" in formaPagamentoDespacho.text.upper() or "BRADESCO" in forma2.text.upper():
                     formaPagamento = "Depósito Bradesco"
                     return formaPagamento
                 if  "CPF" in beneficiario.text or "CPF" in beneficiario2.text:
                     formaPagamento = "Depósito"
-                    
-                    
-                    
                     return formaPagamento
 
                 if "CNPJ" in beneficiario.text or "CNPJ" in beneficiario2.text:
-            
-                
+                           
                     print(formaPagamentoDespacho.text)
                     
                     formaPagamento = ""
@@ -169,7 +165,10 @@ def encontrarFormaDePagamento(navegador):
                     if "GRERJ" in formaPagamentoDespacho.text or "GRERJ" in forma2.text:
                         formaPagamento = "Guia"
 
-
+                if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text or "DEPÓSITO JUDICIAL" in forma2.text:
+                    formaPagamento = "Guia"
+                elif "DEPÓSITO" in formaPagamentoDespacho.text or "DEPÓSITO" in forma2.text:
+                    formaPagamento = "Depósito"
               
 
 
