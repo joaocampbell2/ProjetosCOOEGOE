@@ -77,6 +77,15 @@ def fazerConsulta(codigo):
     if codigo ==codigoAnna:
         pass
     if codigo == codigoRose:
+        inputAno = WebDriverWait(nav,4).until(EC.presence_of_element_located((By.XPATH,'//input[contains(@id,"gwt-uid")]')))
+        inputAno.send_keys(hoje.year)
+        time.sleep(1)
+        inputAno.send_keys(Keys.ENTER)
+        
+        time.sleep(4)
+        
+    if codigo == codigoMarcao:
+       
         
         WebDriverWait(nav,4).until(EC.presence_of_element_located((By.XPATH,'//input[contains(@id,"gwt-uid")]')))
         inputs = nav.find_elements(By.XPATH,'//input[contains(@id,"gwt-uid")]')
@@ -89,49 +98,39 @@ def fazerConsulta(codigo):
         time.sleep(2)
         inputs[1].send_keys(Keys.ENTER)
         time.sleep(5)
-        nav.find_element(By.XPATH, "//div[@class = 'v-slot v-slot-friendly']").click()
-        time.sleep(4)
         
-    if codigo == codigoMarcao:
-       
-        inputAno = WebDriverWait(nav,4).until(EC.presence_of_element_located((By.XPATH,'//input[contains(@id,"gwt-uid")]')))
-        inputAno.send_keys(hoje.year)
-        time.sleep(1)
-        inputAno.send_keys(Keys.ENTER)
-       
+        nav.find_element(By.XPATH, "//div[@class = 'v-slot v-slot-friendly']").click()
+        time.sleep(2)
 
     nav.find_element(By.XPATH, "//div[@class = 'v-slot v-slot-friendly']").click()
 
     #Baixar Planilha
     WebDriverWait(nav,180).until(EC.presence_of_element_located((By.XPATH, "//span[@class = 'v-icon v-icon-download']"))).click()
     WebDriverWait(nav,10).until(EC.presence_of_element_located((By.XPATH,  "//span[text() = 'Excel']"))).click()
-    aguardarDownload()
+    arquivo = aguardarDownload()
     #Sair
     nav.find_element(By.TAG_NAME,"body").send_keys(Keys.ESCAPE)
-
+    return arquivo
 def aguardarDownload():
     arquivo = ''
     while not os.path.isfile(arquivo):
         file_list = glob(r"C:\Users\\"+os.getlogin()+r"\Downloads\*.xls")
         for file in file_list:
-            if (int(time.time()) - int(os.stat(file).st_mtime) < 4):
+            if (int(time.time()) - int(os.stat(file).st_mtime) < 2):
                 arquivo = file
-                break
+                time.sleep(1)
+                return arquivo
+                
 
 def encontrarArquivo():
-    if codigo != codigoMarcao:
         
-        files = Path(r"C:\Users\\"+os.getlogin()+r"\Downloads\\").glob('*.xls')
-        arquivo_mais_recente = max(files, key=getmtime)
-        newFile = Path(str(arquivo_mais_recente).replace(" ", "_"))
+    files = Path(r"C:\Users\\"+os.getlogin()+r"\Downloads\\").glob('*.xls')
+    arquivo_mais_recente = max(files, key=getmtime)
+    newFile = Path(str(arquivo_mais_recente).replace(" ", "_"))
 
-        move(arquivo_mais_recente, newFile)
-        return newFile
-    else:
-        files = Path(r"C:\Users\\"+os.getlogin()+r"\Downloads\\").glob('*.xls')
-        arquivo_mais_recente = max(files, key=getmtime)
-        return arquivo_mais_recente 
-            
+    move(arquivo_mais_recente, newFile)
+    return str(newFile)
+
 def salvarPlanilha(df,tabela):
     #SALVA A TABELA SEM APAGAR AS OUTRAS
     writer = pd.ExcelWriter(r"C:\Users\jcampbell1\Downloads\2024 - CONTROLE EXECUÇÃO - COPIA.xlsx", engine='openpyxl', mode='a', if_sheet_exists="replace")
@@ -141,26 +140,26 @@ def salvarPlanilha(df,tabela):
 
 hoje = date.today()
 codigoAnna = "056759"
-codigoMarcao = "055092"
-codigoRose = "061581"
+codigoMarcao = "061581"
+codigoRose = "055092"
 
-codigos = [codigoMarcao,codigoRose,codigoAnna]
-caminhos=  ["Base 1 - EGE MARCAO","Base 3 - EGE ROSE","Base 2 - EGE ANNA"]
+codigos = [codigoMarcao,codigoAnna,codigoRose]
+caminhos=  ["Base 1 - EGE MARCAO","Base 2 - EGE ANNA","Base 3 - EGE ROSE",]
 nav = webdriver.Firefox()
 
 login(nav)
 
 
-
-for codigo, caminho in zip(codigos,caminhos):
+try:
     
-    fazerConsulta(codigo)
-
-    planilha = encontrarArquivo()
-    print(codigo)
-    print(planilha)
-    print(caminho)
-    planilha = pd.read_excel(planilha, header=None, engine= "xlrd")
-    salvarPlanilha(planilha,caminho)
-
-nav.quit()
+    for codigo, caminho in zip(codigos,caminhos):
+        
+        arquivo =fazerConsulta(codigo)
+        planilha = pd.read_excel(str(arquivo), header=None, engine= "xlrd")
+        salvarPlanilha(planilha,caminho)
+        os.remove(arquivo)
+except:
+    traceback.print_exc()
+    
+finally:
+    nav.quit()
