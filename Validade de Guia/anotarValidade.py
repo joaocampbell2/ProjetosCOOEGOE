@@ -135,12 +135,25 @@ def encontrarFormaDePagamento(navegador):
             navegador.switch_to.default_content()            
             WebDriverWait(navegador,10).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
             WebDriverWait(navegador,10).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
-            try:
-                beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" )
-                beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
-                formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
-                forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
-
+            try: 
+                
+                try:
+                    beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" )
+                except:
+                    beneficiario = ""
+                try:    
+                    beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
+                except:
+                    beneficiario2 = ""
+                try:
+                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
+                except:
+                    formaPagamentoDespacho = ""
+                try:
+                    forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
+                except:
+                    forma2 = ""
+                    
                 if "BRADESCO" in formaPagamentoDespacho.text.upper() or "BRADESCO" in forma2.text.upper():
                     formaPagamento = "Depósito Bradesco"
                     return formaPagamento
@@ -149,7 +162,7 @@ def encontrarFormaDePagamento(navegador):
                     return formaPagamento
 
                 if "CNPJ" in beneficiario.text or "CNPJ" in beneficiario2.text:
-                           
+                        
                     print(formaPagamentoDespacho.text)
                     
                     formaPagamento = ""
@@ -169,15 +182,14 @@ def encontrarFormaDePagamento(navegador):
                     formaPagamento = "Guia"
                 elif "DEPÓSITO" in formaPagamentoDespacho.text or "DEPÓSITO" in forma2.text:
                     formaPagamento = "Depósito"
-              
 
-
-                    return formaPagamento
-            
-
-                return ""
+                return formaPagamento
             except:
                 traceback.print_exc()
+                return ""
+
+    return ""
+            
 
 def anotarFormaDePagamento(processo,formaPagamento,navegador,validade):
 
@@ -352,7 +364,9 @@ try:
 
 except:
     if tipo == 1:
-        colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR EXTRAORÇAMENTÁRIA","VALOR ORÇAMENTÁRIA",  "OB EXTRAORÇAMENTÁRIA", "OB ORÇAMENTÁRIA"]
+        colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR EXTRAORÇAMENTÁRIA",
+                   "VALOR ORÇAMENTÁRIA",  "OB EXTRAORÇAMENTÁRIA", "OB ORÇAMENTÁRIA", "UPLOAD EXTRAORÇAMENTÁRIA",
+                   "UPLOAD ORÇAMENTÁRIA",	"COMPROVANTES NOTIFICADOS"	, "DESPACHO"	,"NOTIFICADO PARA ASSINATURA "]
     if tipo == 2:
         colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL", "VALOR EXTRAORÇAMENTÁRIA", "OB EXTRAORÇAMENTÁRIA"]
     df = pd.DataFrame(columns=colunas, index=None)
