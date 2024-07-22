@@ -113,7 +113,7 @@ def abrirPastas(navegador):
     pastas = listaDocs.find_elements(By.XPATH, '//a[contains(@id, "joinPASTA")]')
     for doc in pastas[:-1]:
         doc.click() 
-        sleep(2)      
+        sleep(4)      
 
         
 def encontrarFormaDePagamento(navegador):
@@ -138,49 +138,52 @@ def encontrarFormaDePagamento(navegador):
             try: 
                 
                 try:
-                    beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" )
+                    beneficiario = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Beneficiário')]" ).text.upper()
                 except:
                     beneficiario = ""
                 try:    
-                    beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" )
+                    beneficiario2 = navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][4]" ).text.upper()
                 except:
                     beneficiario2 = ""
                 try:
-                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" )
+                    formaPagamentoDespacho = navegador.find_element(By.XPATH, "//p//strong[contains(text(), 'Forma de Pagamento')]" ).text.upper()
                 except:
                     formaPagamentoDespacho = ""
                 try:
-                    forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" )
+                    forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" ).text.upper()
                 except:
                     forma2 = ""
                     
-                if "BRADESCO" in formaPagamentoDespacho.text.upper() or "BRADESCO" in forma2.text.upper():
+                if "BRADESCO" in formaPagamentoDespacho or "BRADESCO" in forma2:
                     formaPagamento = "Depósito Bradesco"
                     return formaPagamento
-                if  "CPF" in beneficiario.text or "CPF" in beneficiario2.text:
+                if  "CPF" in beneficiario or "CPF" in beneficiario2:
                     formaPagamento = "Depósito"
                     return formaPagamento
 
-                if "CNPJ" in beneficiario.text or "CNPJ" in beneficiario2.text:
+                if "CNPJ" in beneficiario or "CNPJ" in beneficiario2:
                         
-                    print(formaPagamentoDespacho.text)
+                    print(formaPagamentoDespacho)
                     
                     formaPagamento = ""
                     
-                    if "GUIA" in formaPagamentoDespacho.text or "GUIA" in forma2.text:
+                    if "GUIA" in formaPagamentoDespacho or "GUIA" in forma2:
                         formaPagamento = "Guia"
-                    if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text or "DEPÓSITO JUDICIAL" in forma2.text:
+                    if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho or "DEPÓSITO JUDICIAL" in forma2:
                         formaPagamento = "Guia"
-                    elif "DEPÓSITO" in formaPagamentoDespacho.text or "DEPÓSITO" in forma2.text:
+                    elif "DEPÓSITO" in formaPagamentoDespacho or "DEPÓSITO" in forma2:
                         formaPagamento = "Depósito"
-                    if "GRU" in formaPagamentoDespacho.text or "GRU" in forma2.text:
+                    if "GRU" in formaPagamentoDespacho or "GRU" in forma2:
                         formaPagamento = "Guia GRU"
-                    if "GRERJ" in formaPagamentoDespacho.text or "GRERJ" in forma2.text:
+                    if "GRERJ" in formaPagamentoDespacho or "GRERJ" in forma2:
                         formaPagamento = "Guia"
+                    if "FUNAD" in formaPagamentoDespacho or "FUNAD" in forma2:
+                        formaPagamento = "Guia GRU"
 
-                if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho.text or "DEPÓSITO JUDICIAL" in forma2.text:
+
+                if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho or "DEPÓSITO JUDICIAL" in forma2:
                     formaPagamento = "Guia"
-                elif "DEPÓSITO" in formaPagamentoDespacho.text or "DEPÓSITO" in forma2.text:
+                elif "DEPÓSITO" in formaPagamentoDespacho or "DEPÓSITO" in forma2:
                     formaPagamento = "Depósito"
 
                 return formaPagamento
