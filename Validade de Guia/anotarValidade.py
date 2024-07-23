@@ -360,12 +360,13 @@ if bloco not in wb.sheetnames:
     wb.save(marinette)
 
 df = pd.read_excel(marinette, sheet_name=bloco, dtype={'VALIDADE': str})
-tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
 
 try:
     print(df["PROCESSO"].values)
 
 except:
+    tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
+
     if tipo == 1:
         colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR EXTRAORÇAMENTÁRIA",
                    "VALOR ORÇAMENTÁRIA",  "OB EXTRAORÇAMENTÁRIA", "OB ORÇAMENTÁRIA", "UPLOAD EXTRAORÇAMENTÁRIA",
