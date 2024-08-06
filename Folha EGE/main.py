@@ -17,7 +17,7 @@ import pyautogui
 from datetime import date
 from glob import glob
 from shutil import move
-
+import tabula
 meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", 
          "Dezembro"]
 
@@ -90,6 +90,44 @@ def alterarNomeArquivo():
             move(arquivo, newFile)
             return
     os.remove(arquivo)
+
+
+def atualizarPlanilha():
+    planilha = load_workbook(r"C:\Users\SEFAZ\Documents\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - 07.20241.xlsx")
+    retencoes = planilha["Retenções"]
+
+    bancoPan = retencoes["E5"]
+    bvFinanceira = retencoes["E4"]
+    bancoIndustrial = retencoes["E6"]
+    bancoMercatil = retencoes["E7"]
+    bancoSantander = retencoes["E8"]
+    bancoBMG = retencoes["E9"]
+    bancoDaycoval = retencoes["E10"]
+    caixa = retencoes["E11"]
+    itau = retencoes["E12"]
+    ccbb = retencoes["E13"]
+    bradesco = retencoes["E14"]
+    bancoMaster = retencoes["E15"]
+    bancoNio = retencoes["E16"]
+    bradescoFinaciamentos = retencoes["E17"]
+    itauBMG = retencoes["E18"]
+    bancoRs = retencoes["E19"]
+    creditaqui = retencoes["E20"]
+    bancoBrasil = retencoes["E21"]
+    pkl = retencoes["E22"]
+    inter = retencoes["E23"]
+    proderj = retencoes["E24"]
+    repasseSefaz = retencoes ["E25"]
+
+    df = tabula.read_pdf(r"C:\Users\SEFAZ\Downloads\PGOV0832P_Agosto.pdf", pages='all', pandas_options={'header': None})[0]
+    df[6] = df[6].str.replace(',', '.')
+
+    bancoPan.value = df[df[0].str.contains('BANCO PAN', case=False, na=False,)][6].astype(float).sum(numeric_only=True)
+
+    planilha.save(r"C:\Users\SEFAZ\Documents\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - 07.20241.xlsx")
+
+
+
 
 navegador = webdriver.Firefox()
 login(navegador)
