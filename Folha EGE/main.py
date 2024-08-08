@@ -18,6 +18,9 @@ from datetime import date
 from glob import glob
 from shutil import move
 import tabula
+from PyPDF2 import PdfReader
+
+hoje = date.today()
 meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", 
          "Dezembro"]
 
@@ -72,7 +75,8 @@ def baixarRelatorios(navegador):
             alterarNomeArquivo()
             navegador.switch_to.default_content()
             navegador.switch_to.frame(arvore)
-
+    navegador.quit()
+    
 def alterarNomeArquivo():
     arquivo = ""
     while not os.path.isfile(arquivo):
@@ -91,52 +95,142 @@ def alterarNomeArquivo():
             return
     os.remove(arquivo)
 
+def somarValores(df,banco,index,colunaNome):
+    return df[df[colunaNome].str.upper().str.contains(banco, case=False, na=False,)][index].astype(float).sum(numeric_only=True)
 
-def atualizarPlanilha():
-    planilha = load_workbook(r"C:\Users\SEFAZ\Documents\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - 07.20241.xlsx")
+def atualizarMapaResumo():
+
+    reader = PdfReader(tgrj0802p)
+    page = reader.pages[0]
+    text = page.extract_text()
+
+    paragrafos = text.split("\n")
+
+    valores = []
+    for valor in paragrafos:
+        if re.search(r",\d\d$", valor):
+            valor = valor.split(" ")
+            valores.append(valor[1])
+            
+    planilha = load_workbook(template)
+    resumo = planilha["Mapa Resumo"]
+
+    brutoServidores = resumo["C4"]
+    brutoCotistas = resumo["C5"]
+    descontos = resumo["C6"]        
+            
+    brutoServidores.value = valores[0]
+    brutoCotistas.value = valores[1]
+    descontos.value = valores[2]
+
+    processoMapa = resumo["B2"]
+    processoMapa.value = processoSEI
+    
+    competenciaMapa = resumo["C3"]
+    competenciaMapa.value  = meses[hoje.month - 1] + "/" +  str(hoje.year)
+
+    folhaDePagamentoMapa = resumo["B14"]
+    folhaDePagamentoMapa.value = "Folha de Pagamento Encargos Gerais do Estado. Competência " + competenciaMapa.value + ". "+ processoMapa.value + "."
+
+    planilha.save(novaMemoria)
+
+def atualizarSequencial():
+    planilha = load_workbook(novaMemoria)
+    sequencial = planilha["Sequencial"]
+    
+    celulas  ={
+    'COMPLEMENTO SALARIO MINIMO FEDERAL' :  sequencial["F36"],
+    'AUXÍLIO ADOÇÃO' : sequencial['F40'],
+    "3190.92.00": sequencial["F39"]
+    }
+    
+    buscarValores(celulas,0,tgrj0807p,3,0)
+    planilha.save(novaMemoria)
+
+def atualizarRetencoes():
+    planilha = load_workbook(novaMemoria)
     retencoes = planilha["Retenções"]
 
-    bancoPan = retencoes["E5"]
-    bvFinanceira = retencoes["E4"]
-    bancoIndustrial = retencoes["E6"]
-    bancoMercatil = retencoes["E7"]
-    bancoSantander = retencoes["E8"]
-    bancoBMG = retencoes["E9"]
-    bancoDaycoval = retencoes["E10"]
-    caixa = retencoes["E11"]
-    itau = retencoes["E12"]
-    ccbb = retencoes["E13"]
-    bradesco = retencoes["E14"]
-    bancoMaster = retencoes["E15"]
-    bancoNio = retencoes["E16"]
-    bradescoFinaciamentos = retencoes["E17"]
-    itauBMG = retencoes["E18"]
-    bancoRs = retencoes["E19"]
-    creditaqui = retencoes["E20"]
-    bancoBrasil = retencoes["E21"]
-    pkl = retencoes["E22"]
-    inter = retencoes["E23"]
-    proderj = retencoes["E24"]
-    repasseSefaz = retencoes ["E25"]
+    celulasBancos = {
+    "bvFinanceira": retencoes["E4"],
+    "BANCO PAN": retencoes["E5"],
+    "BANCO INDUSTRIAL": retencoes["E6"],
+    "BMB": retencoes["E7"],
+    "BANCO SANTANDER": retencoes["E8"],
+    "BMG CARTAO": retencoes["E9"],
+    "BANCO DAYCOVAL": retencoes["E10"],
+    "caixa": retencoes["E11"],
+    "4269": retencoes["E12"],
+    "ccbb": retencoes["E13"],
+    "BANCO BRADESCO": retencoes["E14"],
+    "BANCO MASTER S.A": retencoes["E15"],
+    "NIO MEIOS DE PAGAMENTO LTDA": retencoes["E16"],
+    "BRADESCO FINANCIAMENTOS": retencoes["E17"],
+    "BANCO ITAU CONSIGNADO S/A": retencoes["E18"],
+    "bancoRs": retencoes["E19"],
+    "CREDITAQUI FINANCEIRA S.A": retencoes["E20"],
+    "BANCO DO BRASIL": retencoes["E21"],
+    "BENEFÍCIO CREDCESTA": retencoes["E22"],
+    "BANCO INTER S.A.": retencoes["E23"],
+    "proderj": retencoes["E24"],
+    "repasseSefaz": retencoes["E25"]
+}
+      
+    buscarValores(celulasBancos,0,pgov0832p,6,0)
+    
+    celulas = {
+    "RIOPREVIDÊNCIA" : retencoes['E27'],
+    "IMPOSTO DE RENDA": retencoes['E29'],
+    "PENSÃO ALIMENTÍCIA": retencoes['E28'],
+    }
+    
+    buscarValores(celulas,-1,tgrj0801p,2,1)
 
-    df = tabula.read_pdf(r"C:\Users\SEFAZ\Downloads\PGOV0832P_Agosto.pdf", pages='all', pandas_options={'header': None})[0]
-    df[6] = df[6].str.replace(',', '.')
+    planilha.save(novaMemoria)
 
-    bancoPan.value = df[df[0].str.contains('BANCO PAN', case=False, na=False,)][6].astype(float).sum(numeric_only=True)
+def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
 
-    planilha.save(r"C:\Users\SEFAZ\Documents\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - 07.20241.xlsx")
+    df = tabula.read_pdf(arquivo, pages='all', pandas_options={'header': None})[pagina]
+    df[colunaValores] = df[colunaValores].str.replace('.', '')
+    df[colunaValores] = df[colunaValores].str.replace(',', '.')
+    
+    if arquivo == tgrj0801p:
+        df[colunaValores + 1] = df[colunaValores +1].str.replace('.', '')
+        df[colunaValores + 1] = df[colunaValores + 1].str.replace(',', '.')
+        
+        df[colunaValores] = df[colunaValores].fillna(0)
+        df[colunaValores + 1] = df[colunaValores + 1].fillna(0) 
+        
+        df[colunaValores] = df[colunaValores].astype(float) + df[colunaValores + 1].astype(float)
+
+    
+    for chave,valor in dicionario.items():
+        valor.value = somarValores(df,chave,colunaValores,colunaNome)
+ 
+    
+template = r"C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - Template.xlsx"
+novaMemoria = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - " + str(date.today().month) + "." + str(date.today().year) + ".xlsx"
+
+# navegador = webdriver.Firefox()
+# login(navegador)
+
+processoSEI = "SEI-040002/002623/2024"
+
+# barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
+
+# barraPesquisa.send_keys(processo)
+# barraPesquisa.send_keys(Keys.ENTER)
+
+# baixarRelatorios(navegador)
 
 
 
 
-navegador = webdriver.Firefox()
-login(navegador)
+tgrj0807p = r"C:\Users\jcampbell1\Downloads\TGRJ0807P_Agosto.pdf"
+pgov0832p = r"C:\Users\jcampbell1\Downloads\PGOV0832P_Agosto.pdf"
+tgrj0802p = r"C:\Users\jcampbell1\Downloads\TGRJ0802P_Agosto.pdf"
+tgrj0801p = r"C:\Users\jcampbell1\Downloads\TGRJ0801P_Agosto.pdf"
 
-processo = "SEI-040002/002623/2024"
-
-barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
-
-barraPesquisa.send_keys(processo)
-barraPesquisa.send_keys(Keys.ENTER)
-
-baixarRelatorios(navegador)
+atualizarMapaResumo()
+atualizarSequencial()
+atualizarRetencoes()
