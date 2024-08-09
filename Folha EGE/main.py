@@ -89,7 +89,7 @@ def alterarNomeArquivo():
     
     for processo in processos:
         if processo in arquivo.upper():
-            nome = processo + "_" + meses[date.today().month - 1]
+            nome = processo + "_" + meses[mes - 1]
             newFile = r"C:\Users\\"+os.getlogin()+r"\Downloads\\" + nome + ".pdf"
             move(arquivo, newFile)
             return
@@ -110,7 +110,9 @@ def atualizarMapaResumo():
     for valor in paragrafos:
         if re.search(r",\d\d$", valor):
             valor = valor.split(" ")
-            valores.append(valor[1])
+            valor[1] = valor[1].replace('.', '')
+            valor[1] = valor[1].replace(',', '.')
+            valores.append(float(valor[1]))
             
     planilha = load_workbook(template)
     resumo = planilha["Mapa Resumo"]
@@ -127,7 +129,7 @@ def atualizarMapaResumo():
     processoMapa.value = processoSEI
     
     competenciaMapa = resumo["C3"]
-    competenciaMapa.value  = meses[hoje.month - 1] + "/" +  str(hoje.year)
+    competenciaMapa.value  = meses[mes - 1] + "/" +  str(hoje.year)
 
     folhaDePagamentoMapa = resumo["B14"]
     folhaDePagamentoMapa.value = "Folha de Pagamento Encargos Gerais do Estado. Competência " + competenciaMapa.value + ". "+ processoMapa.value + "."
@@ -168,7 +170,7 @@ def atualizarRetencoes():
     "BRADESCO FINANCIAMENTOS": retencoes["E17"],
     "BANCO ITAU CONSIGNADO S/A": retencoes["E18"],
     "bancoRs": retencoes["E19"],
-    "CREDITAQUI FINANCEIRA S.A": retencoes["E20"],
+    "CREDITAQUI FINANCEIRA": retencoes["E20"],
     "BANCO DO BRASIL": retencoes["E21"],
     "BENEFÍCIO CREDCESTA": retencoes["E22"],
     "BANCO INTER S.A.": retencoes["E23"],
@@ -181,11 +183,21 @@ def atualizarRetencoes():
     celulas = {
     "RIOPREVIDÊNCIA" : retencoes['E27'],
     "IMPOSTO DE RENDA": retencoes['E29'],
-    "PENSÃO ALIMENTÍCIA": retencoes['E28'],
+    "PENSÃO ALIMENTÍCIA": retencoes['E28']
     }
     
     buscarValores(celulas,-1,tgrj0801p,2,1)
+    
+    
+    buscarValores({"RESSARCIMENTO FAZENDA ESTADUAL" : retencoes['E25']}, 2,tgrj0801p,5,1)
+    
 
+    proderj = retencoes["E24"]
+    anulacoes=  retencoes["E31"]
+    adiantamento = retencoes["E30"]
+    encontrarRepasse(proderj)
+    atualizarAdiantamento(anulacoes,0,5)
+    atualizarAdiantamento(adiantamento,1,4)
     planilha.save(novaMemoria)
 
 def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
@@ -194,7 +206,7 @@ def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
     df[colunaValores] = df[colunaValores].str.replace('.', '')
     df[colunaValores] = df[colunaValores].str.replace(',', '.')
     
-    if arquivo == tgrj0801p:
+    if arquivo == tgrj0801p and pagina == -1 :
         df[colunaValores + 1] = df[colunaValores +1].str.replace('.', '')
         df[colunaValores + 1] = df[colunaValores + 1].str.replace(',', '.')
         
@@ -206,15 +218,52 @@ def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
     
     for chave,valor in dicionario.items():
         valor.value = somarValores(df,chave,colunaValores,colunaNome)
- 
+
+def atualizarAdiantamento(celula,index,pag):   
+    reader = PdfReader( r"C:\Users\jcampbell1\Downloads\TGRJ0801P_Agosto.pdf")
+    page = reader.pages[pag]
+    text = page.extract_text()
+
+    paragrafos = text.split("\n")
+
+    valores = []
+    for paragrafo in paragrafos:
+        valor = re.findall(r"([\d|.]+,(\d\d))\b", paragrafo)
+        if len(valor) > 1 :
+            valores.append(valor[index][0])
+           
+    valores[0] = valores[0].replace(".", "")
+    valores[0] = valores[0].replace(",", ".")
+     
+    celula.value = float(valores[0])
+   
+def encontrarRepasse(celula):
+
+    reader = PdfReader(pgov0832p)
+    page = reader.pages[1]
+    text = page.extract_text()
+
+    valorRepasse = re.search( r'([\d|.]+,(\d\d))\b \*\* Total de Repasse',text)
+    valorRepasse = valorRepasse.group(1)
+    
+    valorRepasse = valorRepasse.replace(".", "")
+    valorRepasse = valorRepasse.replace(",", ".")
+
+    celula.value = float(valorRepasse)
+
     
 template = r"C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - Template.xlsx"
-novaMemoria = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - " + str(date.today().month) + "." + str(date.today().year) + ".xlsx"
 
 # navegador = webdriver.Firefox()
 # login(navegador)
 
 processoSEI = "SEI-040002/002623/2024"
+#processoSEI = input("Digite o Processo: ")
+mes = 7
+
+#mes = int(input("Digite o mês da Folha: "))
+novaMemoria = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
+
 
 # barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
 
@@ -222,8 +271,6 @@ processoSEI = "SEI-040002/002623/2024"
 # barraPesquisa.send_keys(Keys.ENTER)
 
 # baixarRelatorios(navegador)
-
-
 
 
 tgrj0807p = r"C:\Users\jcampbell1\Downloads\TGRJ0807P_Agosto.pdf"
