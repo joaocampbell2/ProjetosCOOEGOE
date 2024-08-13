@@ -49,6 +49,13 @@ def login(navegador):
     
 def baixarRelatorios(navegador):
     
+    barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
+
+    barraPesquisa.send_keys(processoSEI)
+    barraPesquisa.send_keys(Keys.ENTER)
+    
+    time.sleep(5)
+    
     arvore = WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.ID, "ifrArvore")))    
     visualizacao = navegador.find_element(By.XPATH, "//iframe[@id = 'ifrVisualizacao']")
     navegador.switch_to.frame(arvore)
@@ -79,6 +86,7 @@ def baixarRelatorios(navegador):
     
 def alterarNomeArquivo():
     arquivo = ""
+    
     while not os.path.isfile(arquivo):
         file_list = glob(r"C:\Users\\"+os.getlogin()+r"\Downloads\*.pdf")
         for file in file_list:
@@ -90,7 +98,7 @@ def alterarNomeArquivo():
     for processo in processos:
         if processo in arquivo.upper():
             nome = processo + "_" + meses[mes - 1]
-            newFile = r"C:\Users\\"+os.getlogin()+r"\Downloads\\" + nome + ".pdf"
+            newFile = pasta + nome + ".pdf"
             move(arquivo, newFile)
             return
     os.remove(arquivo)
@@ -139,14 +147,28 @@ def atualizarMapaResumo():
 def atualizarSequencial():
     planilha = load_workbook(novaMemoria)
     sequencial = planilha["Sequencial"]
-    
+    retencao = planilha["Retenções"]
+
     celulas  ={
     'COMPLEMENTO SALARIO MINIMO FEDERAL' :  sequencial["F36"],
     'AUXÍLIO ADOÇÃO' : sequencial['F40'],
-    "3190.92.00": sequencial["F39"]
+    "3190.92.00": sequencial["F39"],
+    '3190.03.00': sequencial["M7"]
     }
     
     buscarValores(celulas,0,tgrj0807p,3,0)
+    
+    
+    soma = 0
+    
+    for cell in range(5,32):
+        valor = retencao[f'E{cell}'].value
+        print(valor)
+        if isinstance(valor, (float,int)):  # Verifique se o valor é um float
+            soma += valor
+            
+    sequencial["M7"].value = sequencial["M7"].value - soma
+    
     planilha.save(novaMemoria)
 
 def atualizarRetencoes():
@@ -220,7 +242,7 @@ def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
         valor.value = somarValores(df,chave,colunaValores,colunaNome)
 
 def atualizarAdiantamento(celula,index,pag):   
-    reader = PdfReader( r"C:\Users\jcampbell1\Downloads\TGRJ0801P_Agosto.pdf")
+    reader = PdfReader( tgrj0801p)
     page = reader.pages[pag]
     text = page.extract_text()
 
@@ -254,30 +276,25 @@ def encontrarRepasse(celula):
     
 template = r"C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - Template.xlsx"
 
-# navegador = webdriver.Firefox()
-# login(navegador)
+navegador = webdriver.Firefox()
+login(navegador)
 
 processoSEI = "SEI-040002/002623/2024"
 #processoSEI = input("Digite o Processo: ")
 mes = 7
+mes = int(input("Digite o mês da Folha: "))
 
-#mes = int(input("Digite o mês da Folha: "))
-novaMemoria = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
+pasta = "C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício " + str(hoje.year) + '\ ' + str(mes) + "." + str(hoje.year) + ' - ' + processoSEI
+novaMemoria = pasta + "Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
 
-
-# barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
-
-# barraPesquisa.send_keys(processo)
-# barraPesquisa.send_keys(Keys.ENTER)
-
-# baixarRelatorios(navegador)
+baixarRelatorios(navegador)
 
 
-tgrj0807p = r"C:\Users\jcampbell1\Downloads\TGRJ0807P_Agosto.pdf"
-pgov0832p = r"C:\Users\jcampbell1\Downloads\PGOV0832P_Agosto.pdf"
-tgrj0802p = r"C:\Users\jcampbell1\Downloads\TGRJ0802P_Agosto.pdf"
-tgrj0801p = r"C:\Users\jcampbell1\Downloads\TGRJ0801P_Agosto.pdf"
+tgrj0807p = pasta + r"\TGRJ0807P.pdf"
+pgov0832p = pasta + r"\PGOV0832P.pdf"
+tgrj0802p = pasta + r"\TGRJ0802P.pdf"
+tgrj0801p = pasta + r"\TGRJ0801P.pdf"
 
 atualizarMapaResumo()
-atualizarSequencial()
 atualizarRetencoes()
+atualizarSequencial()
