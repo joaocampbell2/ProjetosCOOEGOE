@@ -7,12 +7,9 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import  Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import pandas as pd
 import os
 import re
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
-from openpyxl.formatting.rule import CellIsRule
 import pyautogui
 from datetime import date
 from glob import glob
@@ -73,9 +70,11 @@ def baixarRelatorios(navegador):
             
             
             navegador.find_element(By.XPATH, '//button[@id ="secondaryToolbarToggle" ]').click()
-            time.sleep(0.3)
+            try:
+                WebDriverWait(navegador,2).until(EC.presence_of_element_located((By.XPATH, '//button[@id ="secondaryDownload"]'))).click()
+            except:
+                WebDriverWait(navegador,2).until(EC.presence_of_element_located((By.XPATH, '//button[@id ="download"]'))).click()
 
-            navegador.find_element(By.XPATH, '//button[@id ="secondaryDownload"]').click()
             time.sleep(2)
 
             pyautogui.press("enter")
@@ -87,6 +86,8 @@ def baixarRelatorios(navegador):
 def alterarNomeArquivo():
     arquivo = ""
     
+    if not os.path.isdir(pasta):
+        os.mkdir(pasta)   
     while not os.path.isfile(arquivo):
         file_list = glob(r"C:\Users\\"+os.getlogin()+r"\Downloads\*.pdf")
         for file in file_list:
@@ -97,8 +98,8 @@ def alterarNomeArquivo():
     
     for processo in processos:
         if processo in arquivo.upper():
-            nome = processo + "_" + meses[mes - 1]
-            newFile = pasta + nome + ".pdf"
+            nome = processo + "_" + meses[int(mes) - 1]
+            newFile = pasta + "/" +  nome + ".pdf"
             move(arquivo, newFile)
             return
     os.remove(arquivo)
@@ -137,7 +138,7 @@ def atualizarMapaResumo():
     processoMapa.value = processoSEI
     
     competenciaMapa = resumo["C3"]
-    competenciaMapa.value  = meses[mes - 1] + "/" +  str(hoje.year)
+    competenciaMapa.value  = meses[int(mes) - 1] + "/" +  str(hoje.year)
 
     folhaDePagamentoMapa = resumo["B14"]
     folhaDePagamentoMapa.value = "Folha de Pagamento Encargos Gerais do Estado. Competência " + competenciaMapa.value + ". "+ processoMapa.value + "."
@@ -276,24 +277,21 @@ def encontrarRepasse(celula):
     
 template = r"C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - Template.xlsx"
 
+processoSEI = input("Digite o Processo: ")
+mes = (input("Digite o mês da Folha: "))
+
 navegador = webdriver.Firefox()
 login(navegador)
 
-processoSEI = "SEI-040002/002623/2024"
-#processoSEI = input("Digite o Processo: ")
-mes = 7
-mes = int(input("Digite o mês da Folha: "))
-
-pasta = "C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício " + str(hoje.year) + '\ ' + str(mes) + "." + str(hoje.year) + ' - ' + processoSEI
-novaMemoria = pasta + "Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
+pasta = r"C:/Users/"+ os.getlogin() +r"/OneDrive - SEFAZ-RJ/Folha EGE/Exercício " + str(hoje.year) + '/' + str(mes) + "." + str(hoje.year) + ' - ' + processoSEI.replace("/", "_")
+novaMemoria = pasta + "/" + "Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
 
 baixarRelatorios(navegador)
 
-
-tgrj0807p = pasta + r"\TGRJ0807P.pdf"
-pgov0832p = pasta + r"\PGOV0832P.pdf"
-tgrj0802p = pasta + r"\TGRJ0802P.pdf"
-tgrj0801p = pasta + r"\TGRJ0801P.pdf"
+tgrj0807p = pasta + r"\TGRJ0807P_" + meses[int(mes) - 1] +".pdf"
+pgov0832p = pasta + r"\PGOV0832P_" + meses[int(mes) - 1] +".pdf"
+tgrj0802p = pasta + r"\TGRJ0802P_" + meses[int(mes) - 1] +".pdf"
+tgrj0801p = pasta + r"\TGRJ0801P_" + meses[int(mes) - 1] +".pdf"
 
 atualizarMapaResumo()
 atualizarRetencoes()
