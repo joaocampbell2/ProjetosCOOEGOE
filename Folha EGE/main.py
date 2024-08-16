@@ -10,7 +10,6 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 import re
 from openpyxl import load_workbook
-import pyautogui
 from datetime import date
 from glob import glob
 from shutil import move
@@ -23,7 +22,7 @@ meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "A
 
 processos = ["PGOV0822P","PGOV0832P","TGRJ0801P","TGRJ0802P","TGRJ0807P", "TGRJ0808P"]
 
-def login(navegador):
+def login():
     navegador.get("https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI")
 
     usuario = navegador.find_element(By.XPATH, value='//*[@id="txtUsuario"]')
@@ -44,15 +43,24 @@ def login(navegador):
 
     navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
     
-def baixarRelatorios(navegador):
+def alterarConfigSalvarPdf():
+    
+    navegador.get("about:preferences#general")
+
+    pdf = WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH,"//*[@type = 'application/pdf']" )))
+
+
+    pdf.find_element(By.XPATH, ".//*[@class = 'actionsMenu']").click()
+
+    pdf.find_element(By.XPATH,".//*[@label = 'Salvar arquivo']").click()
+        
+def baixarRelatorios():
     
     barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
 
     barraPesquisa.send_keys(processoSEI)
     barraPesquisa.send_keys(Keys.ENTER)
-    
-    time.sleep(5)
-    
+        
     arvore = WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.ID, "ifrArvore")))    
     visualizacao = navegador.find_element(By.XPATH, "//iframe[@id = 'ifrVisualizacao']")
     navegador.switch_to.frame(arvore)
@@ -62,40 +70,24 @@ def baixarRelatorios(navegador):
 
     for doc in docs:
         if "FOLHA" in doc.text.upper(): 
-            doc.click()
-            navegador.switch_to.default_content()
-            WebDriverWait(navegador,3).until(EC.frame_to_be_available_and_switch_to_it(visualizacao))
-            WebDriverWait(navegador,3).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
-            time.sleep(0.3)
-            
-            
-            navegador.find_element(By.XPATH, '//button[@id ="secondaryToolbarToggle" ]').click()
-            try:
-                WebDriverWait(navegador,2).until(EC.presence_of_element_located((By.XPATH, '//button[@id ="secondaryDownload"]'))).click()
-            except:
-                WebDriverWait(navegador,2).until(EC.presence_of_element_located((By.XPATH, '//button[@id ="download"]'))).click()
-
-            time.sleep(2)
-
-            pyautogui.press("enter")
+            doc.click()           
             alterarNomeArquivo()
-            navegador.switch_to.default_content()
-            navegador.switch_to.frame(arvore)
+           
     navegador.quit()
     
 def alterarNomeArquivo():
     arquivo = ""
-    
+    downloads = r"C:\Users\\"+os.getlogin()+r"\Downloads"
     if not os.path.isdir(pasta):
-        os.mkdir(pasta)   
-    while not os.path.isfile(arquivo):
-        file_list = glob(r"C:\Users\\"+os.getlogin()+r"\Downloads\*.pdf")
-        for file in file_list:
-            if (int(time.time()) - int(os.stat(file).st_mtime) < 4):
-                arquivo = file
-                time.sleep(1)
-                break
+        os.mkdir(pasta)
+        
+    while glob(downloads + "\\*.part") != []:
+        time.sleep(0.1)
     
+    arquivos = os.listdir(downloads)
+    arquivos = [os.path.join(downloads, f) for f in arquivos]
+    arquivo = max(arquivos, key=os.path.getmtime)
+    print(arquivo)
     for processo in processos:
         if processo in arquivo.upper():
             nome = processo + "_" + meses[int(mes) - 1]
@@ -281,12 +273,15 @@ processoSEI = input("Digite o Processo: ")
 mes = (input("Digite o mês da Folha: "))
 
 navegador = webdriver.Firefox()
-login(navegador)
+
+alterarConfigSalvarPdf()
+
+login()
 
 pasta = r"C:/Users/"+ os.getlogin() +r"/OneDrive - SEFAZ-RJ/Folha EGE/Exercício " + str(hoje.year) + '/' + str(mes) + "." + str(hoje.year) + ' - ' + processoSEI.replace("/", "_")
 novaMemoria = pasta + "/" + "Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
 
-baixarRelatorios(navegador)
+baixarRelatorios()
 
 tgrj0807p = pasta + r"\TGRJ0807P_" + meses[int(mes) - 1] +".pdf"
 pgov0832p = pasta + r"\PGOV0832P_" + meses[int(mes) - 1] +".pdf"
