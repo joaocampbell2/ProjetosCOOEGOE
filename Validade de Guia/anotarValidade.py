@@ -346,7 +346,6 @@ def salvarPlanilha(df):
 
     planilha.save(marinette)
     planilha.close()
-    print("Formatação concluída")
 
 
 
