@@ -107,6 +107,10 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                 except:
                     traceback.print_exc()
             
+            if tipo == "CAUÇÃO":
+                df.loc[len(df)] = {"PROCESSO":nProcesso, "VALIDADE": '-'}
+                salvarPlanilha(df)
+                
                 
 def abrirPastas(navegador):
     listaDocs = navegador.find_element(By.ID, "divArvore")
@@ -192,8 +196,6 @@ def encontrarFormaDePagamento(navegador):
     except:
         traceback.print_exc()
         return ""
-
-    return ""
             
 
 def anotarFormaDePagamento(processo,formaPagamento,navegador,validade):
@@ -362,17 +364,19 @@ if bloco not in wb.sheetnames:
 
 df = pd.read_excel(marinette, sheet_name=bloco, dtype={'VALIDADE': str})
 
+tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n3) Caução\n"))
+
+
 try:
     print(df["PROCESSO"].values)
 
 except:
-    tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n"))
 
     if tipo == 1:
         colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR EXTRAORÇAMENTÁRIA",
                    "VALOR ORÇAMENTÁRIA",  "OB EXTRAORÇAMENTÁRIA", "OB ORÇAMENTÁRIA", "UPLOAD EXTRAORÇAMENTÁRIA",
                    "UPLOAD ORÇAMENTÁRIA","COMPROVANTES NOTIFICADOS", "DESPACHO","NOTIFICADO PARA ASSINATURA"]
-    if tipo == 2:
+    if tipo == 2 or tipo ==3:
         colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL", "VALOR EXTRAORÇAMENTÁRIA", "OB EXTRAORÇAMENTÁRIA"]
     df = pd.DataFrame(columns=colunas, index=None)
 
@@ -382,6 +386,8 @@ match tipo:
         tipo = "FIANÇA"
     case 2:
         tipo = "EXECUÇÃO FISCAL"
+    case 3:
+        tipo = "CAUÇÃO"
 
 
 salvarPlanilha(df)
