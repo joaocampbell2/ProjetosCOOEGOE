@@ -7,18 +7,13 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.keys import  Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import pandas as pd
 import os
 import re
 from openpyxl import load_workbook
-import pyautogui
-from datetime import date
-from glob import glob
-from shutil import move
-import tabula
-from PyPDF2 import PdfReader
-import pandas as pd
-
-def login(navegador, user, password):
+from openpyxl.styles import PatternFill
+from openpyxl.formatting.rule import CellIsRule
+def login(user, password):
     navegador.get("https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp")
     usuario = WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="loginBox:itxUsuario::content"]')))
     usuario.send_keys(user)
@@ -32,20 +27,21 @@ def login(navegador, user, password):
     btnLogin = navegador.find_element(By.XPATH, value='//*[@id="loginBox:btnConfirmar"]')
     btnLogin.click()
     navegador.maximize_window()
-
-def verificarSeO(navegador,processo,tipoOB):
-    if tipoOB == "Extra":
-        index = 12
-    if tipoOB == "Orcamentaria":
-        index =13
-
     
-    WebDriverWait(navegador, 30).until(EC.element_to_be_clickable((By.XPATH, '// *[ @id = "pt1:tblOBExtra:sdtFilter::btn"]')))
+    navegador.get('https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira/ordemBancariaExtraOrcamentariaCad.jsp')
+def popUp():
+    try:
+        WebDriverWait(navegador, 2).until(EC.element_to_be_clickable((By.XPATH,
+        '//*[@id="pt1:warnMessageDec:newWarnMessagePopup::content"]//*[@id="pt1:warnMessageDec:frmExec:btnNewWarnMessageOK"]'))).click()
+    except:
+        None
+def verificarSeOProcessoFoiPago(processo):
+    WebDriverWait(navegador, 30).until(EC.element_to_be_clickable((By.XPATH, '// *[@id="pt1:tblOBExtra:sdtFilter::btn"]')))
     try:
         btnLimpar = navegador.find_element(By.XPATH, value= '//*[@id="pt1:tblOBExtra:btnClearFilter"]')
         btnLimpar.click()
     except:
-        btnFiltro = navegador.find_element(By.XPATH, value='// *[ @ id = "pt1:tblOBExtra:sdtFilter::disAcr"]')
+        btnFiltro = navegador.find_element(By.XPATH, value='// *[@id="pt1:tblOBExtra:sdtFilter::disAcr"]')
         btnFiltro.click()
         try:
             btnLimpar = navegador.find_element(By.XPATH, value='//*[@id="pt1:tblOBExtra:btnClearFilter"]')
@@ -60,7 +56,7 @@ def verificarSeO(navegador,processo,tipoOB):
 
     acessoRapido.click()
 
-    popUp(navegador)
+    popUp()
 
     filtroProcessoSEI = Select(navegador.find_element(By.XPATH,
                                                         value='//*[@id="pt1:tblOBExtra:table_rtfFilter:0:cbx_col_sel_rtfFilter::content"]'))
@@ -80,72 +76,154 @@ def verificarSeO(navegador,processo,tipoOB):
     time.sleep(3)
     
     try:
-        WebDriverWait(navegador, 5).until(EC.element_to_be_clickable((By.XPATH, "//span[text()= '"+ processo + "']")))
+        WebDriverWait(navegador, 4).until(EC.element_to_be_clickable((By.XPATH, "//span[text()= '"+ processo + "']")))
+        if procurarErro():
+            return "ERRO NO PAGAMENTO"
         return True
     except:
-        return False
-
+        try:
+            navegador.find_element(By.XPATH, '//*[text() = "Não há dados para esta consulta."]')
+            return False
+        except:
+            traceback.print_exc()
+def procurarErro():
+    tabelaDataResultado = navegador.find_element(By.XPATH, value='//*[@id="pt1:tblOBExtra:tabViewerDec::db"]')
+    rows = tabelaDataResultado.find_elements(By.TAG_NAME, value="tr")
+    if len(rows) > 0:
+        for i in range(len(rows)):
+            tabelaDataResultado = navegador.find_element(By.XPATH, value='//*[@id="pt1:tblOBExtra:tabViewerDec::db"]')
+            rows = tabelaDataResultado.find_elements(By.TAG_NAME, value="tr")
+            col = rows[i].find_elements(By.TAG_NAME, value="td")
+            if col[12].text == "Erro no Pagamento":
+                return True    
 
 def preencherTabelaPrazos():
-    planilha = load_workbook(r"C:\Users\jcampbell1\Downloads\Planilha Gerencial - Marinette.xlsx")
+    planilha = load_workbook(marinette)
     prazos = planilha["PRAZOS"]
 
 
     prazos.delete_rows(2,prazos.max_row)
     tabelas = planilha.sheetnames
-
-
-    tabela = planilha["895785"]
     x= 1
-
     celulasComPrazo = []
-
     for tabela in tabelas:
+        if tabela == "PRAZOS":
+            continue
+        print(tabela)
         tabela = planilha[tabela]
         x = 1
         for linha in tabela:
-            for cell in linha:
-                print(cell.value)
-            if tabela[f"H{x}"].value =="ERRO" or tabela[f"H{x}"].value == None or tabela[f"H{x}"].value == "OB não encontrada!": 
+            prazo = tabela[f"D{x}"].value
+            if "PAGO" not in prazo and  "PRAZO" not in prazo:
                 try:
                     linhaAtual = []
-                    prazo = tabela[f"D{x}"].value
                     
-                    if ("PRAZO") not in prazo:
-                        for cell in linha:
-                            if cell.value != None:
-                                celula = cell.value
-                                linhaAtual.append(celula)
-                                
-                        linhaAtual.append(tabela.title) 
-                        celulasComPrazo.append(linhaAtual)
+                    linhaAtual.append(tabela[f'A{x}'].value)
+                    linhaAtual.append(tabela[f'B{x}'].value)
+                    linhaAtual.append(tabela[f'C{x}'].value)                  
+                    linhaAtual.append(tabela[f'D{x}'].value)                    
+
+                    linhaAtual.append(tabela.title) 
+                    
+                    celulasComPrazo.append(linhaAtual)
                 except:
-                    traceback.print_exc
-                x += 1
+                    traceback.print_exc()
+            x += 1
         
     for linha in celulasComPrazo:
         try:
-            numero = prazos.max_row + 1
-            linha[3] = re.sub(r"\d+", str(numero), linha[3])    
+            print(linha)
             prazos.append(linha)
-            planilha.save(marinette)
         except:
             traceback.print_exc()
 
 
-    planilha._sheets.remove(prazos)
-    planilha._sheets.insert(0,prazos)
+
     planilha.save(marinette)
-
-marinette = r"C:\Users\jcampbell1\Downloads\Planilha Gerencial - Marinette.xlsx"
-planilha = load_workbook(marinette)
-#tabelas = 
-for tabela in planilha:
-    tabela = pd.read_excel(marinette, sheet_name= tabela)
     
-    for processo in tabela:
-        print(processo)
+def salvarPlanilha(df,bloco):
+    #SALVA A TABELA SEM APAGAR AS OUTRAS
+    writer = pd.ExcelWriter(marinette, engine='openpyxl', mode='a', if_sheet_exists='replace')
+    df.to_excel(writer, sheet_name=bloco, index=False)
+    writer.close()
 
+    planilha = load_workbook(marinette)
+    tabela = planilha[bloco]
 
+    #FORMULA PARA PREENCHER A COLUNA DE PRAZO
+    for linha in range(2,tabela.max_row + 1):
+        celulaD = tabela[f"D{linha}"]
+        celulaC = tabela[f"C{linha}"]
+        if celulaC.value == "-":
+            celulaD.value = "SEM PRAZO"
+        elif celulaC.value == "PAGO":
+            pass
+        elif celulaD.value == "ERRO NO PAGAMENTO":
+            pass
+        else:
+            celulaD.value = f'=C{linha}-TODAY()'
 
-#preencherTabelaPrazos()
+    prazo = f'D2:D{tabela.max_row}'
+    #CORES PARA PINTAR AS CELULAS
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FFFFE0", end_color="FFFF00", fill_type="solid")
+    #REGRAS PARA PINTAR AS COLUANS
+    red_rule = CellIsRule(operator='lessThanOrEqual', formula=['15'], stopIfTrue=True, fill=red_fill)
+    green_rule = CellIsRule(operator='greaterThanOrEqual', formula=['31'], stopIfTrue=True, fill=green_fill)
+    yellow_rule = CellIsRule(operator='between', formula=['15','31'], stopIfTrue=True, fill=yellow_fill)
+
+    if tabela.max_row > 1:
+            tabela.conditional_formatting.add(prazo, red_rule)
+            tabela.conditional_formatting.add(prazo, green_rule)
+            tabela.conditional_formatting.add(prazo,yellow_rule)
+
+    #ALINHAR TAMANHO DAS CELULAS
+    for column in tabela.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = (max_length + 2) * 1.2
+        tabela.column_dimensions[column_letter].width = adjusted_width
+
+    planilha.save(marinette)
+    planilha.close()
+    
+marinette = r"C:\Users\jcampbell1\Downloads\Planilha Gerencial - Marinette - copia.xlsx"
+planilha = load_workbook(marinette)
+tabelas = planilha.worksheets[1:]
+navegador = webdriver.Firefox()
+login(os.environ['cpf'], os.environ["senha_siafe"])
+
+for tabela in tabelas:
+    
+    bloco = tabela.title
+    print(bloco)
+    tabela = pd.read_excel(marinette, sheet_name= bloco, header=0)
+    for index, linha in tabela.iterrows():  
+        if "PAGO" not in str(linha['PRAZO']) and "PRAZO" not in str(linha['PRAZO']) :
+            print(linha["PROCESSO"])
+            try:
+                resultado = verificarSeOProcessoFoiPago(linha['PROCESSO'])
+                
+                if resultado == False:
+                    print("NAO PAGO")
+
+                elif resultado == True:
+                    print("TA PAGO")
+                    tabela.loc[index,'VALIDADE'] = 'PAGO'
+                    tabela.loc[index,'PRAZO'] = 'PAGO'
+                elif resultado == "ERRO NO PAGAMENTO":
+                    print(resultado)
+                    tabela.loc[index,'PRAZO'] = resultado
+                
+                salvarPlanilha(tabela,bloco)
+            except:
+                traceback.print_exc()    
+navegador.quit()
+preencherTabelaPrazos()
