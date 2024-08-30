@@ -143,9 +143,11 @@ def atualizarSequencial():
     retencao = planilha["Retenções"]
 
     celulas  ={
-    'COMPLEMENTO SALARIO MINIMO FEDERAL' :  sequencial["F36"],
-    'AUXÍLIO ADOÇÃO' : sequencial['F40'],
+    '3190.11.23' :  sequencial["F36"],
+    '3390.08.13' : sequencial['F40'],
     "3190.92.00": sequencial["F39"],
+    "3190.11.34": sequencial["F38"],
+    
     '3190.03.00': sequencial["M7"]
     }
     
@@ -185,7 +187,7 @@ def atualizarRetencoes():
     "BRADESCO FINANCIAMENTOS": retencoes["E17"],
     "BANCO ITAU CONSIGNADO S/A": retencoes["E18"],
     "bancoRs": retencoes["E19"],
-    "CREDITAQUI FINANCEIRA": retencoes["E20"],
+    "FINANCEIRA": retencoes["E20"],
     "BANCO DO BRASIL": retencoes["E21"],
     "BENEFÍCIO CREDCESTA": retencoes["E22"],
     "BANCO INTER S.A.": retencoes["E23"],
@@ -212,7 +214,7 @@ def atualizarRetencoes():
     adiantamento = retencoes["E30"]
     encontrarRepasse(proderj)
     atualizarAdiantamento(anulacoes,0,5)
-    atualizarAdiantamento(adiantamento,1,4)
+    atualizarAdiantamento(adiantamento,0,4)
     planilha.save(novaMemoria)
 
 def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
