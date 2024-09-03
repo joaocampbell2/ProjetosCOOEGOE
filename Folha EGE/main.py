@@ -84,7 +84,6 @@ def baixarRelatorios():
     barraPesquisa.send_keys(Keys.ENTER)
         
     arvore = WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.ID, "ifrArvore")))    
-    visualizacao = navegador.find_element(By.XPATH, "//iframe[@id = 'ifrVisualizacao']")
     navegador.switch_to.frame(arvore)
 
     listaDocs =  WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.ID, "divArvore")))  
@@ -381,6 +380,10 @@ pgov0832p = pasta + r"\PGOV0832P_" + meses[int(mes) - 1] +".pdf"
 tgrj0802p = pasta + r"\TGRJ0802P_" + meses[int(mes) - 1] +".pdf"
 tgrj0801p = pasta + r"\TGRJ0801P_" + meses[int(mes) - 1] +".pdf"
 
-atualizarMapaResumo()
-atualizarRetencoes()
-atualizarSequencial()
+if os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p):
+    atualizarMapaResumo()
+    atualizarRetencoes()
+    atualizarSequencial()
+
+else:
+    print("Arquivos insuficientes!")
