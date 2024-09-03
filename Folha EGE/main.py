@@ -22,7 +22,26 @@ meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "A
 
 processos = ["PGOV0822P","PGOV0832P","TGRJ0801P","TGRJ0802P","TGRJ0807P", "TGRJ0808P"]
 
-def login():
+def loginSIAFE():
+    navegador.get("https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp")
+
+    usuario = navegador.find_element(By.XPATH, value='//*[@id="loginBox:itxUsuario::content"]')
+    usuario.send_keys(os.environ['cpf'])
+
+    senha = navegador.find_element(By.XPATH, value='//*[@id="loginBox:itxSenhaAtual::content"]')
+    senha.send_keys(os.environ['senha_siafe'])
+    
+    btnLogin = navegador.find_element(By.XPATH, value='//*[@id="loginBox:btnConfirmar"]')
+    btnLogin.click()
+
+    try:
+        WebDriverWait(navegador,2).until(EC.element_to_be_clickable((By.XPATH, "//a[@class = 'x12k']"))).click()        
+    except:
+        pass
+
+    navegador.maximize_window()
+
+def loginSEI():
     navegador.get("https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI")
 
     usuario = navegador.find_element(By.XPATH, value='//*[@id="txtUsuario"]')
@@ -37,9 +56,9 @@ def login():
     btnLogin = navegador.find_element(By.XPATH, value='//*[@id="Acessar"]')
     btnLogin.click()
 
-    time.sleep(5)
 
     navegador.maximize_window()
+    time.sleep(5)
 
     navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
     
@@ -56,6 +75,9 @@ def alterarConfigSalvarPdf():
         
 def baixarRelatorios():
     
+    alterarConfigSalvarPdf()
+
+    loginSEI()
     barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
 
     barraPesquisa.send_keys(processoSEI)
@@ -74,7 +96,62 @@ def baixarRelatorios():
             alterarNomeArquivo()
            
     navegador.quit()
+
+def verificarSaldo():
+    loginSIAFE()
+    navegador.get(r"https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/contabilidade/execucaoContabilidadeMain.jsp")
+
+    WebDriverWait(navegador,10).until(EC.element_to_be_clickable((By.XPATH, "//a[text() = 'Detalhamento da Conta Contábil']"))).click()
+    WebDriverWait(navegador,10).until(EC.element_to_be_clickable((By.XPATH, "//input[contains(@name, 'UnidadeGestora')]"))).send_keys("370200")
+
+    select = Select(navegador.find_element(By.XPATH, '//select[@id = "tplSip:cbxMes::content"]'))
+    select.select_by_index(int(mes))
+    navegador.find_element(By.XPATH, '//input[contains(@id, "SaldoZerado")]').click()
+    time.sleep(2)
+    credito = buscarSaldos("622110101", "2774")
+    lme = buscarSaldos("823130201", "1.5.00.100.01")
+    return credito,lme
+     
+def buscarSaldos(contabil,corrente):
+   
+    contaContabil = navegador.find_element(By.XPATH, '//input[contains(@id, "ContaContabil")]')
+
+    contaContabil.clear()
+    time.sleep(2)
+    contaContabil.send_keys(contabil)
+    contaContabil.send_keys(Keys.ENTER)
+    time.sleep(2)
+    contaCorrente = navegador.find_element(By.XPATH, '//input[contains(@id, "ContaCorrente")]')
+    contaCorrente.clear()
+    time.sleep(2)
+    contaCorrente.send_keys(corrente)
+    contaCorrente.send_keys(Keys.ENTER)
+    time.sleep(2)
+       
+    tabela = navegador.find_element(By.XPATH, '//div[contains(@id, "tabListaFiltradaSaldo")]')
+    contas = tabela.find_elements(By.XPATH, './/tr')
     
+    saldos = []
+    for conta in contas:
+        celulas = conta.find_elements(By.XPATH, './/td')
+        for i in range(0, len(celulas)):
+            if i == 5:
+                saldos.append(celulas[i].text)
+    
+    contaCorrente = navegador.find_element(By.XPATH, '//input[contains(@id, "ContaCorrente")]')
+    for i in range (0, len(corrente)):
+        contaCorrente.send_keys(Keys.BACKSPACE)
+    time.sleep(2)
+    contaContabil = navegador.find_element(By.XPATH, '//input[contains(@id, "ContaContabil")]')
+    for i in range (0, len(contabil)):
+        contaContabil.send_keys(Keys.BACKSPACE)
+        
+    
+    
+    print(saldos)
+    
+    return saldos
+
 def alterarNomeArquivo():
     arquivo = ""
     downloads = r"C:\Users\\"+os.getlogin()+r"\Downloads"
@@ -135,6 +212,19 @@ def atualizarMapaResumo():
     folhaDePagamentoMapa = resumo["B14"]
     folhaDePagamentoMapa.value = "Folha de Pagamento Encargos Gerais do Estado. Competência " + competenciaMapa.value + ". "+ processoMapa.value + "."
 
+    dataExtracao = resumo["G15"]
+    dataExtracao.value = hoje
+    
+    credito1 = resumo["H4"]
+    credito1.value = credito[1]
+    credito2 = resumo["H5"]
+    credito2.value = credito[2]
+    
+    lme1 = resumo["H7"]
+    lme1.value = lme[1]
+    lme2 = resumo["H8"]
+    lme2.value = lme[2]
+    
     planilha.save(novaMemoria)
 
 def atualizarSequencial():
@@ -276,14 +366,15 @@ mes = (input("Digite o mês da Folha: "))
 
 navegador = webdriver.Firefox()
 
-alterarConfigSalvarPdf()
-
-login()
 
 pasta = r"C:/Users/"+ os.getlogin() +r"/OneDrive - SEFAZ-RJ/Folha EGE/Exercício " + str(hoje.year) + '/' + str(mes) + "." + str(hoje.year) + ' - ' + processoSEI.replace("/", "_")
 novaMemoria = pasta + "/" + "Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
 
+
+credito,lme = verificarSaldo()
+
 baixarRelatorios()
+
 
 tgrj0807p = pasta + r"\TGRJ0807P_" + meses[int(mes) - 1] +".pdf"
 pgov0832p = pasta + r"\PGOV0832P_" + meses[int(mes) - 1] +".pdf"
