@@ -315,6 +315,10 @@ def salvarPlanilha(df):
         celulaC = tabela[f"C{linha}"]
         if celulaC.value == "-":
             celulaD.value = "SEM PRAZO"
+        elif celulaC.value == "PAGO":
+            pass
+        elif celulaD.value == "ERRO NO PAGAMENTO":
+            pass
         else:
             celulaD.value = f'=C{linha}-TODAY()'
 

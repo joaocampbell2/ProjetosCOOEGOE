@@ -13,6 +13,9 @@ import re
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from openpyxl.formatting.rule import CellIsRule
+
+
+
 def login(user, password):
     navegador.get("https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp")
     usuario = WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="loginBox:itxUsuario::content"]')))
@@ -73,19 +76,28 @@ def verificarSeOProcessoFoiPago(processo):
     acessoRapido.click()
     
     WebDriverWait(navegador,15).until(EC.presence_of_element_located((By.XPATH, '//*[@id="pt1:tblOBExtra:table_rtfFilter:1:cbx_col_sel_rtfFilter::content"]')))
-    time.sleep(3)
+    
+    
     
     try:
-        WebDriverWait(navegador, 4).until(EC.element_to_be_clickable((By.XPATH, "//span[text()= '"+ processo + "']")))
+        WebDriverWait(navegador, 7).until( EC.element_to_be_clickable((By.XPATH, "//span[text()= '"+ processo + "']")) )
         if procurarErro():
             return "ERRO NO PAGAMENTO"
         return True
     except:
         try:
-            navegador.find_element(By.XPATH, '//*[text() = "Não há dados para esta consulta."]')
-            return False
+            navegador.find_element(By.XPATH, "//span[text()= '"+ processo.lower() + "']")
+            if procurarErro():
+                return "ERRO NO PAGAMENTO"
+            return True
         except:
-            traceback.print_exc()
+            try:
+                navegador.find_element(By.XPATH, '//*[text() = "Não há dados para esta consulta."]')
+                return False
+            except:
+                traceback.print_exc()
+                return False
+            
 def procurarErro():
     tabelaDataResultado = navegador.find_element(By.XPATH, value='//*[@id="pt1:tblOBExtra:tabViewerDec::db"]')
     rows = tabelaDataResultado.find_elements(By.TAG_NAME, value="tr")
@@ -95,22 +107,23 @@ def procurarErro():
             rows = tabelaDataResultado.find_elements(By.TAG_NAME, value="tr")
             col = rows[i].find_elements(By.TAG_NAME, value="td")
             if col[12].text == "Erro no Pagamento":
-                return True    
+                return True
+            else:
+                return False   
 
 def preencherTabelaPrazos():
-    planilha = load_workbook(marinette)
-    prazos = planilha["PRAZOS"]
-
-
+    planilhaMarinette = load_workbook(marinette)
+    planilhaPrazos = load_workbook(caminhoPrazos)
+    prazos = planilhaPrazos['PRAZOS']
     prazos.delete_rows(2,prazos.max_row)
-    tabelas = planilha.sheetnames
+    tabelas = planilhaMarinette.sheetnames
     x= 1
     celulasComPrazo = []
     for tabela in tabelas:
         if tabela == "PRAZOS":
             continue
         print(tabela)
-        tabela = planilha[tabela]
+        tabela = planilhaMarinette[tabela]
         x = 1
         for linha in tabela:
             prazo = tabela[f"D{x}"].value
@@ -136,18 +149,18 @@ def preencherTabelaPrazos():
             prazos.append(linha)
         except:
             traceback.print_exc()
+    planilhaPrazos.save(caminhoPrazos)
 
-
-
-    planilha.save(marinette)
+    df = pd.read_excel(caminhoPrazos, sheet_name="PRAZOS")
+    salvarPlanilha(df,"PRAZOS",caminhoPrazos)
     
-def salvarPlanilha(df,bloco):
+def salvarPlanilha(df,bloco,caminho):
     #SALVA A TABELA SEM APAGAR AS OUTRAS
-    writer = pd.ExcelWriter(marinette, engine='openpyxl', mode='a', if_sheet_exists='replace')
+    writer = pd.ExcelWriter(caminho, engine='openpyxl', mode='a', if_sheet_exists='replace')
     df.to_excel(writer, sheet_name=bloco, index=False)
     writer.close()
 
-    planilha = load_workbook(marinette)
+    planilha = load_workbook(caminho)
     tabela = planilha[bloco]
 
     #FORMULA PARA PREENCHER A COLUNA DE PRAZO
@@ -191,16 +204,18 @@ def salvarPlanilha(df,bloco):
         adjusted_width = (max_length + 2) * 1.2
         tabela.column_dimensions[column_letter].width = adjusted_width
 
-    planilha.save(marinette)
+    planilha.save(caminho)
     planilha.close()
     
-marinette = r"C:\Users\jcampbell1\Downloads\Planilha Gerencial - Marinette - copia.xlsx"
+marinette = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Planilha Gerencial - Marinette.xlsx"
 planilha = load_workbook(marinette)
-tabelas = planilha.worksheets[1:]
+caminhoPrazos = r"C:\Users\jcampbell1\OneDrive - SEFAZ-RJ\CONTROLE GERENCIAL - PAGAMENTOS\Prazos de Guias - Marinette.xlsx"
+tabelas = planilha.worksheets
+
 navegador = webdriver.Firefox()
 login(os.environ['cpf'], os.environ["senha_siafe"])
 
-for tabela in tabelas:
+for tabela in tabelas[::-1]:
     
     bloco = tabela.title
     print(bloco)
@@ -222,7 +237,7 @@ for tabela in tabelas:
                     print(resultado)
                     tabela.loc[index,'PRAZO'] = resultado
                 
-                salvarPlanilha(tabela,bloco)
+                salvarPlanilha(tabela,bloco,marinette)
             except:
                 traceback.print_exc()    
 navegador.quit()
