@@ -34,7 +34,16 @@ def login(navegador):
     navegador.maximize_window()
 
     navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-
+    trocarCoordenacao()
+    
+def trocarCoordenacao():
+    coordenacao = navegador.find_elements(By.XPATH, "//a[@id = 'lnkInfraUnidade']")[1]
+    print(coordenacao)
+    if coordenacao.get_attribute("innerHTML") == 'SEFAZ/COOAJUR':
+        print(coordenacao)
+        coordenacao.click()
+        WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Trocar Unidade')]")))
+        navegador.find_element(By.XPATH, "//td[text() = 'SEFAZ/COOEGOE' ]").click() 
 def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
     navegador.find_element(By.XPATH, "//span[text() = 'Blocos']").click()
     WebDriverWait(navegador,20).until(EC.element_to_be_clickable((By.XPATH, "//span[text() = 'Internos']"))).click()

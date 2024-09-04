@@ -62,6 +62,17 @@ def loginSEI():
 
     navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
     
+    trocarCoordenacao()
+    
+def trocarCoordenacao():
+    coordenacao = navegador.find_elements(By.XPATH, "//a[@id = 'lnkInfraUnidade']")[1]
+    print(coordenacao)
+    if coordenacao.get_attribute("innerHTML") == 'SEFAZ/COOAJUR':
+        print(coordenacao)
+        coordenacao.click()
+        WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Trocar Unidade')]")))
+        navegador.find_element(By.XPATH, "//td[text() = 'SEFAZ/COOEGOE' ]").click() 
+
 def alterarConfigSalvarPdf():
     
     navegador.get("about:preferences#general")
