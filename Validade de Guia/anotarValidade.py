@@ -40,7 +40,6 @@ def trocarCoordenacao():
     coordenacao = navegador.find_elements(By.XPATH, "//a[@id = 'lnkInfraUnidade']")[1]
     print(coordenacao)
     if coordenacao.get_attribute("innerHTML") == 'SEFAZ/COOAJUR':
-        print(coordenacao)
         coordenacao.click()
         WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Trocar Unidade')]")))
         navegador.find_element(By.XPATH, "//td[text() = 'SEFAZ/COOEGOE' ]").click() 
@@ -73,8 +72,6 @@ def encontrarProcessos(navegador,blocoSolicitado,df,tipo):
                     
                     formaDePagamento = encontrarFormaDePagamento(navegador) 
                     validade = "-"
-                    if formaDePagamento == "Guia GRU":
-                        validade = "-"
                     if formaDePagamento == "Guia":
                         print("Buscando Validade...")
                         navegador.switch_to.default_content()
@@ -168,7 +165,12 @@ def encontrarFormaDePagamento(navegador):
             forma2 =  navegador.find_element(By.XPATH, "//p[@class = 'Tabela_Texto_Alinhado_Esquerda' ][5]" ).text.upper()
         except:
             forma2 = ""
-            
+        
+        if "PERDIMENTO" in formaPagamentoDespacho or "PERDIMENTO" in forma2:
+            formaPagamento = "PERDIMENTO"
+            return formaPagamento
+
+        
         if "BRADESCO" in formaPagamentoDespacho or "BRADESCO" in forma2:
             formaPagamento = "Depósito Bradesco"
             return formaPagamento
