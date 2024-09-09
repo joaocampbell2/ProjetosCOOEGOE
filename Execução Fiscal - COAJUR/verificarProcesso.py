@@ -73,7 +73,30 @@ def verificarCompetencia():
                         
     return False
 
+def preencherPlanilha():
+    processo = processoSEI
     
+    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
+    quantDocs = len(docs) 
+    for doc in reversed(range(quantDocs)):
+        docTexto = docs[doc].text
+        if "DARJ CDA" in docTexto:
+            docs[doc].click()
+            navegador.switch_to.default_content()            
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
+            time.sleep(2)
+            body = navegador.find_element(By.XPATH, '//body').text
+            cda = re.search(r"(CERTIDÃO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n",body).group(2) #DARJ
+            executado = re.search(r"(NOME)\n\n([\n*\w*\s\(\)\.,-]*)\n\n",body).group(2)  #DARJ
+            montante = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n",body).group(2)  #DARJ
+            print(cda)
+            print(executado)
+            print(montante)
+            break
+    
+
+    processoJudicial = None #1 OU SEGUNDO DOCUMENTO
                 
 navegador = webdriver.Firefox()
 processoSEI = "SEI-140011/000214/2022"
@@ -89,6 +112,6 @@ WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.
 
 abrirPastas()
 
-
+preencherPlanilha()
 
 #navegador.quit()
