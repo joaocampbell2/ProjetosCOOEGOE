@@ -10,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 import re
 from openpyxl import load_workbook
-from datetime import date
+from datetime import date, datetime
 from glob import glob
 from shutil import move
 import tabula
@@ -87,9 +87,9 @@ def preencherPlanilha():
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
             time.sleep(2)
             body = navegador.find_element(By.XPATH, '//body').text
-            cda = re.search(r"(CERTIDÃO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n",body).group(2) #DARJ
-            executado = re.search(r"(NOME)\n\n([\n*\w*\s\(\)\.,-]*)\n\n",body).group(2)  #DARJ
-            montante = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n",body).group(2)  #DARJ
+            cda = re.search(r"(CERTIDÃO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n06",body).group(2) #DARJ
+            executado = re.search(r"(NOME)\n\n([\n*\w*\s\(\)\.,-]*)\n\n08",body).group(2)  #DARJ
+            montante = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n14",body).group(2)  #DARJ
             print(cda)
             print(executado)
             print(montante)
@@ -97,7 +97,48 @@ def preencherPlanilha():
     
 
     processoJudicial = None #1 OU SEGUNDO DOCUMENTO
-                
+
+def verificarValorEValidade():
+    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
+    quantDocs = len(docs) 
+    for doc in reversed(range(quantDocs)):
+        docTexto = docs[doc].text
+        if "DARJ CDA" in docTexto:
+            docs[doc].click()
+            navegador.switch_to.default_content()            
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
+            time.sleep(2)
+            body = navegador.find_element(By.XPATH, '//body').text
+            
+            validade = re.search(r"(VENCIMENTO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n01",body).group(2)  #DARJ
+            validade1 = datetime.strptime(validade, '%d/%m/%Y')
+
+            dias = (validade1 - datetime.now()).days
+            print(dias)
+            if dias < 0:
+                return "GUIA FORA DE VALIDADE"
+            
+            montanteDARJ = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n14",body).group(2)  #DARJ
+            print(montanteDARJ)
+            
+            navegador.switch_to.default_content()
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
+
+            break
+    
+    for doc in reversed(range(quantDocs)):
+        docTexto = docs[doc].text
+        if "Guia" in docTexto:
+            docs[doc].click()
+            navegador.switch_to.default_content()            
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
+            WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
+            time.sleep(2)
+            body = navegador.find_element(By.XPATH, '//body').text 
+            
+            break       
+                    
 navegador = webdriver.Firefox()
 processoSEI = "SEI-140011/000214/2022"
 
@@ -112,6 +153,8 @@ WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.
 
 abrirPastas()
 
-preencherPlanilha()
+verificarValorEValidade()
+
+#preencherPlanilha()
 
 #navegador.quit()
