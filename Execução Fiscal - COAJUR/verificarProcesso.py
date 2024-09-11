@@ -48,6 +48,8 @@ def trocarCoordenacao():
         navegador.find_element(By.XPATH, "//td[text() = 'SEFAZ/COOAJUR' ]").click() 
         
 def abrirPastas():
+    navegador.switch_to.default_content()
+    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
     listaDocs = WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.ID, "divArvore")))
     pastas = listaDocs.find_elements(By.XPATH, '//a[contains(@id, "joinPASTA")]')
     for doc in pastas[:-1]:
@@ -55,6 +57,8 @@ def abrirPastas():
         sleep(4)
         
 def verificarCompetencia():
+    navegador.switch_to.default_content()
+    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
     docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
     quantDocs = len(docs) 
     for doc in reversed(range(quantDocs)):
@@ -64,14 +68,21 @@ def verificarCompetencia():
                 navegador.switch_to.default_content()            
                 WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
                 WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
+                WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, '//p[contains(text(), "Rio de Janeiro")]')))
+
                 body = navegador.find_element(By.TAG_NAME, 'body').text
-                if "Conforme despacho retro, solicitamos o processamento do DARJ ora acostado." in body:
+                if "processamento do DARJ" in body:
                     if "AUDITORA FISCAL" in body.upper() or "AUDITOR FISCAL" in body.upper():
-                        return True
+                        return "Competencia ok"
                     else:
-                        return False
+                        return "Competencia inválida"
+                else:
+                    navegador.switch_to.default_content()
+                    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
+                    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
+            
                         
-    return False
+    return "Competencia inválida"
 
 def preencherPlanilha():
     processo = processoSEI
@@ -85,7 +96,7 @@ def preencherPlanilha():
             navegador.switch_to.default_content()            
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
-            time.sleep(2)
+            WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, '//p[contains(text(), "Rio de Janeiro")]')))
             body = navegador.find_element(By.XPATH, '//body').text
             cda = re.search(r"(CERTIDÃO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n06",body).group(2) #DARJ
             executado = re.search(r"(NOME)\n\n([\n*\w*\s\(\)\.,-]*)\n\n08",body).group(2)  #DARJ
@@ -99,6 +110,9 @@ def preencherPlanilha():
     processoJudicial = None #1 OU SEGUNDO DOCUMENTO
 
 def verificarValorEValidade():
+    navegador.switch_to.default_content()
+    WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
+
     docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
     quantDocs = len(docs) 
     for doc in reversed(range(quantDocs)):
@@ -110,23 +124,25 @@ def verificarValorEValidade():
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
             time.sleep(2)
             body = navegador.find_element(By.XPATH, '//body').text
-            
-            validade = re.search(r"(VENCIMENTO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n01",body).group(2)  #DARJ
-            validade1 = datetime.strptime(validade, '%d/%m/%Y')
+            print(body)
+            if "DARJ" not in body:
+                return "Impossível verificar DARJ", "Impossível verificar DARJ" 
+            validade = re.search(r"(VENCIMENTO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n01 ",body).group(2)  #DARJ
+            validadeData = datetime.strptime(validade, '%d/%m/%Y')
 
-            dias = (validade1 - datetime.now()).days
-            print(dias)
+            dias = (validadeData - datetime.now()).days
             if dias < 0:
-                return "GUIA FORA DE VALIDADE"
-            
-            montanteDARJ = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n14",body).group(2)  #DARJ
-            print(montanteDARJ)
+                validade = "Guia fora de validade"
+            else:
+                validade = "Validade ok"
+            montanteDARJ = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n14 ",body).group(2)  #DARJ
             
             navegador.switch_to.default_content()
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
 
             break
-    
+    docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
+
     for doc in reversed(range(quantDocs)):
         docTexto = docs[doc].text
         if "Guia" in docTexto:
@@ -134,13 +150,20 @@ def verificarValorEValidade():
             navegador.switch_to.default_content()            
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrVisualizacao")))
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
-            time.sleep(2)
+            WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.XPATH, "//span[text() = 'Guia de Recolhimento']")))
             body = navegador.find_element(By.XPATH, '//body').text 
-            
-            break       
+            montanteGuia = re.search(r"Não\n.?(\d[\n*\w*\s\(\)\.,-\/]*,\d\d)\n\nU", body).group(1)
+            break      
+    
+    if montanteDARJ != montanteGuia:
+        montante  = "Montante Guia diferente de Montante DARJ"            
+    else:
+        montante = "Montante ok"
+        
+    return validade, montante
                     
 navegador = webdriver.Firefox()
-processoSEI = "SEI-140011/000214/2022"
+processoSEI = "SEI-140001/050926/2024"
 
 loginSEI()
 
@@ -149,12 +172,15 @@ barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
 barraPesquisa.send_keys(processoSEI)
 barraPesquisa.send_keys(Keys.ENTER)
 
-WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
 
 abrirPastas()
 
-verificarValorEValidade()
+validade, montante = verificarValorEValidade()
 
-#preencherPlanilha()
+competencia = verificarCompetencia()
+
+print("Validade: " + validade)
+print("Montante: " + montante)
+print("Competencia: " + competencia)
 
 #navegador.quit()
