@@ -73,16 +73,17 @@ def verificarCompetencia():
                 body = navegador.find_element(By.TAG_NAME, 'body').text
                 if "processamento do DARJ" in body:
                     if "AUDITORA FISCAL" in body.upper() or "AUDITOR FISCAL" in body.upper():
-                        return "Competencia ok"
+                        return "ok"
                     else:
-                        return "Competencia inválida"
+                        return "inválida"
                 else:
                     navegador.switch_to.default_content()
                     WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvore")))
                     docs = navegador.find_elements(By.XPATH, "//div[@id = 'divArvore']//div//a[@class = 'infraArvoreNo']")
             
                         
-    return "Competencia inválida"
+    return "inválida"
+
 
 def preencherPlanilha():
     processo = processoSEI
@@ -124,7 +125,6 @@ def verificarValorEValidade():
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
             time.sleep(2)
             body = navegador.find_element(By.XPATH, '//body').text
-            print(body)
             if "DARJ" not in body:
                 return "Impossível verificar DARJ", "Impossível verificar DARJ" 
             validade = re.search(r"(VENCIMENTO)\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n01 ",body).group(2)  #DARJ
@@ -134,7 +134,7 @@ def verificarValorEValidade():
             if dias < 0:
                 validade = "Guia fora de validade"
             else:
-                validade = "Validade ok"
+                validade = "ok"
             montanteDARJ = re.search(r"(TOTAL A PAGAR)\n\n([\n*\w*\s\(\)\.,-]*)\n\n14 ",body).group(2)  #DARJ
             
             navegador.switch_to.default_content()
@@ -158,29 +158,58 @@ def verificarValorEValidade():
     if montanteDARJ != montanteGuia:
         montante  = "Montante Guia diferente de Montante DARJ"            
     else:
-        montante = "Montante ok"
+        montante = "ok"
         
     return validade, montante
-                    
+   
+   
+def acessarBloco():
+    navegador.find_element(By.XPATH, "//span[text() = 'Blocos']").click()
+    WebDriverWait(navegador,20).until(EC.element_to_be_clickable((By.XPATH, "//span[text() = 'Internos']"))).click()
+    blocos = navegador.find_elements(By.XPATH, "//tbody//tr")[1:-1]
+
+    for bloco in blocos:    
+        nBloco = bloco.find_elements(By.XPATH,".//td")[1]
+        if nBloco.text == blocoSolicitado:
+            nBloco.find_element(By.XPATH, './/a').click()
+            break
+                  
 navegador = webdriver.Firefox()
+
+blocoSolicitado = "616986"
 processoSEI = "SEI-140001/050926/2024"
 
 loginSEI()
 
-barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
 
-barraPesquisa.send_keys(processoSEI)
-barraPesquisa.send_keys(Keys.ENTER)
+acessarBloco()
 
+processos = navegador.find_elements(By.XPATH, "//tbody//tr")
+time.sleep(1)
 
-abrirPastas()
+for i in range(1,len(processos)):
+    WebDriverWait(navegador,20).until(EC.invisibility_of_element_located(((By.XPATH, "//div[@class = 'sparkling-modal-close']"))))
+    WebDriverWait(navegador,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
+    processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
+    nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
 
-validade, montante = verificarValorEValidade()
+    WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a')))).click()
 
-competencia = verificarCompetencia()
+    time.sleep(3)  
 
-print("Validade: " + validade)
-print("Montante: " + montante)
-print("Competencia: " + competencia)
+    navegador.switch_to.window(navegador.window_handles[1])
+    
+    abrirPastas()
+
+    validade, montante = verificarValorEValidade()
+
+    competencia = verificarCompetencia()
+
+    print("Validade: " + validade)
+    print("Montante: " + montante)
+    print("Competencia: " + competencia)
+    print(f"======================={i}========================")
+    navegador.close()
+    navegador.switch_to.window(navegador.window_handles[0])
 
 #navegador.quit()
