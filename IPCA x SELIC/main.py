@@ -41,9 +41,7 @@ def loginSEI():
     
 def trocarCoordenacao():
     coordenacao = navegador.find_elements(By.XPATH, "//a[@id = 'lnkInfraUnidade']")[1]
-    print(coordenacao)
     if coordenacao.get_attribute("innerHTML") == 'SEFAZ/COOAJUR':
-        print(coordenacao)
         coordenacao.click()
         WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Trocar Unidade')]")))
         navegador.find_element(By.XPATH, "//td[text() = 'SEFAZ/COOEGOE' ]").click() 
@@ -81,7 +79,6 @@ def procurarCalculo():
             WebDriverWait(navegador,20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "ifrArvoreHtml")))
             WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, '//*[contains(text(), "Calculadora do cidadão")]')))
             body = navegador.find_element(By.XPATH, '//body').text
-            print(body)
             
             dataInicial = re.search(r"Data inicial\n (\d\d\/\d\d\d\d)", body).group(1)
             dataFinal = re.search(r"Data final\n (\d\d\/\d\d\d\d)", body).group(1)
@@ -139,7 +136,7 @@ def salvarPlanilha(df,caminho):
 
 
 
-planilha = r"C:\Users\SEFAZ\Downloads\IPCAxSELIC.xlsx"
+planilha = r"C:\Users\jcampbell1\Downloads\IPCAxSELIC.xlsx"
     
 meses = ["","jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
@@ -173,7 +170,7 @@ for i in range (len(processos)):
         processos.loc[i,"DATA DA ARRECADAÇÃO"] = mesInicial + "/" + anoInicial
         processos.loc[i,"DATA DO PGTO"] = mesFinal + "/" + anoFinal
         try:
-            processos.loc[i,"Atualização SELIC"] = calcularSelic("01" + dataInicial.replace("/", ""),"01" + dataFinal.replace("/", "") , processo["Principal"] + "00")
+            processos.loc[i,"Atualização SELIC"] = calcularSelic("01" + dataInicial.replace("/", ""),"01" + dataFinal.replace("/", "") , processo["Principal"])
         except:
             continue
 
