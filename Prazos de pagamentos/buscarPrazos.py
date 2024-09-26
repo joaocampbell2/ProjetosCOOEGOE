@@ -13,7 +13,7 @@ import re
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from openpyxl.formatting.rule import CellIsRule
-
+from datetime import datetime
 
 
 def login(user, password):
@@ -152,8 +152,19 @@ def preencherTabelaPrazos():
     planilhaPrazos.save(caminhoPrazos)
 
     df = pd.read_excel(caminhoPrazos, sheet_name="PRAZOS")
+    df = organizarPlanilha(df)
     salvarPlanilha(df,"PRAZOS",caminhoPrazos)
-    
+
+def organizarPlanilha(df):
+
+    df['VALIDADE'] = df["VALIDADE"].apply(lambda x: datetime.strptime(x,"%d/%m/%Y").date() if pd.notnull(x) else None)
+
+    df = df.sort_values(by = 'VALIDADE', na_position='first')
+
+    df['VALIDADE'] = df["VALIDADE"].apply(lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else None)
+
+    return df
+
 def salvarPlanilha(df,bloco,caminho):
     #SALVA A TABELA SEM APAGAR AS OUTRAS
     writer = pd.ExcelWriter(caminho, engine='openpyxl', mode='a', if_sheet_exists='replace')
@@ -185,11 +196,14 @@ def salvarPlanilha(df,bloco,caminho):
     red_rule = CellIsRule(operator='lessThanOrEqual', formula=['15'], stopIfTrue=True, fill=red_fill)
     green_rule = CellIsRule(operator='greaterThanOrEqual', formula=['31'], stopIfTrue=True, fill=green_fill)
     yellow_rule = CellIsRule(operator='between', formula=['15','31'], stopIfTrue=True, fill=yellow_fill)
+    error_rule = CellIsRule(operator='equal', formula=['"ERRO NO PAGAMENTO"'], stopIfTrue=True, fill=red_fill)
 
     if tabela.max_row > 1:
             tabela.conditional_formatting.add(prazo, red_rule)
+            tabela.conditional_formatting.add(prazo, yellow_rule)
+            tabela.conditional_formatting.add(prazo, error_rule)
             tabela.conditional_formatting.add(prazo, green_rule)
-            tabela.conditional_formatting.add(prazo,yellow_rule)
+
 
     #ALINHAR TAMANHO DAS CELULAS
     for column in tabela.columns:
