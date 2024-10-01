@@ -1,6 +1,5 @@
 import time
 from time import sleep
-import traceback
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -16,106 +15,39 @@ from shutil import move
 import tabula
 from PyPDF2 import PdfReader
 
-hoje = date.today()
-meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", 
-         "Dezembro"]
-
-processos = ["PGOV0822P","PGOV0832P","TGRJ0801P","TGRJ0802P","TGRJ0807P", "TGRJ0808P"]
-
-def loginSIAFE():
-    navegador.get("https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp")
-
-    usuario = navegador.find_element(By.XPATH, value='//*[@id="loginBox:itxUsuario::content"]')
-    usuario.send_keys(os.environ['cpf'])
-
-    senha = navegador.find_element(By.XPATH, value='//*[@id="loginBox:itxSenhaAtual::content"]')
-    senha.send_keys(os.environ['senha_siafe'])
-    
-    btnLogin = navegador.find_element(By.XPATH, value='//*[@id="loginBox:btnConfirmar"]')
-    btnLogin.click()
-
-    try:
-        WebDriverWait(navegador,2).until(EC.element_to_be_clickable((By.XPATH, "//a[@class = 'x12k']"))).click()        
-    except:
-        pass
-
-    navegador.maximize_window()
-
-def loginSEI():
-    navegador.get("https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI")
-
-    usuario = navegador.find_element(By.XPATH, value='//*[@id="txtUsuario"]')
-    usuario.send_keys(os.environ['login_sefaz'])
-
-    senha = navegador.find_element(By.XPATH, value='//*[@id="pwdSenha"]')
-    senha.send_keys(os.environ['senha_sefaz'])
-
-    exercicio = Select(navegador.find_element(By.XPATH, value='//*[@id="selOrgao"]'))
-    exercicio.select_by_visible_text('SEFAZ')
-
-    btnLogin = navegador.find_element(By.XPATH, value='//*[@id="Acessar"]')
-    btnLogin.click()
-
-
-    navegador.maximize_window()
-    time.sleep(5)
-
-    navegador.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-    
-    trocarCoordenacao()
-    
-def trocarCoordenacao():
-    coordenacao = navegador.find_elements(By.XPATH, "//a[@id = 'lnkInfraUnidade']")[1]
-    print(coordenacao)
-    if coordenacao.get_attribute("innerHTML") == 'SEFAZ/COOAJUR':
-        print(coordenacao)
-        coordenacao.click()
-        WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Trocar Unidade')]")))
-        navegador.find_element(By.XPATH, "//td[text() = 'SEFAZ/COOEGOE' ]").click() 
+from marinetteSEFAZ import loginSEI,pesquisarProcesso, loginSIAFE, baixarArquivos
 
 def alterarConfigSalvarPdf():
     
     navegador.get("about:preferences#general")
 
     pdf = WebDriverWait(navegador,5).until(EC.presence_of_element_located((By.XPATH,"//*[@type = 'application/pdf']" )))
-
-
     pdf.find_element(By.XPATH, ".//*[@class = 'actionsMenu']").click()
-
     pdf.find_element(By.XPATH,".//*[@label = 'Salvar arquivo']").click()
         
 def baixarRelatorios():
     
     alterarConfigSalvarPdf()
 
-    loginSEI()
-    barraPesquisa = navegador.find_element(By.ID, "txtPesquisaRapida")
-
-    barraPesquisa.send_keys(processoSEI)
-    barraPesquisa.send_keys(Keys.ENTER)
-        
-    arvore = WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.ID, "ifrArvore")))    
-    navegador.switch_to.frame(arvore)
-
-    listaDocs =  WebDriverWait(navegador,10).until(EC.presence_of_element_located((By.ID, "divArvore")))  
-    docs = listaDocs.find_elements(By.TAG_NAME, "a")
-
-    for doc in docs:
-        if "FOLHA" in doc.text.upper(): 
-            doc.click()           
-            alterarNomeArquivo()
-           
+    loginSEI(navegador, os.environ['login_sefaz'], os.environ['senha_sefaz'], "SEFAZ/COOEGOE")
+    
+    pesquisarProcesso(navegador, processoSEI)
+    
+    baixarArquivos(navegador,listaArquivos="FOLHA")
+    
+    alterarNomeArquivos()
+    
     navegador.quit()
 
 def verificarSaldo():
-    loginSIAFE()
+    loginSIAFE(navegador, os.environ['cpf'], os.environ["senha_siafe"])
     navegador.get(r"https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/contabilidade/execucaoContabilidadeMain.jsp")
 
     WebDriverWait(navegador,10).until(EC.element_to_be_clickable((By.XPATH, "//a[text() = 'Detalhamento da Conta Contábil']"))).click()
     WebDriverWait(navegador,10).until(EC.element_to_be_clickable((By.XPATH, "//input[contains(@name, 'UnidadeGestora')]"))).send_keys("370200")
 
     select = Select(navegador.find_element(By.XPATH, '//select[@id = "tplSip:cbxMes::content"]'))
-    select.select_by_index(int(mes))
+    select.select_by_index(int(mes) + 1)
     navegador.find_element(By.XPATH, '//input[contains(@id, "SaldoZerado")]').click()
     time.sleep(2)
     credito = buscarSaldos("622110101", "2774")
@@ -155,14 +87,11 @@ def buscarSaldos(contabil,corrente):
     contaContabil = navegador.find_element(By.XPATH, '//input[contains(@id, "ContaContabil")]')
     for i in range (0, len(contabil)):
         contaContabil.send_keys(Keys.BACKSPACE)
-        
-    
     
     print(saldos)
-    
     return saldos
 
-def alterarNomeArquivo():
+def alterarNomeArquivos():
     arquivo = ""
     downloads = r"C:\Users\\"+os.getlogin()+r"\Downloads"
     if not os.path.isdir(pasta):
@@ -368,6 +297,12 @@ def encontrarRepasse(celula):
 
     celula.value = float(valorRepasse)
 
+
+hoje = date.today()
+meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", 
+         "Dezembro"]
+
+processos = ["PGOV0822P","PGOV0832P","TGRJ0801P","TGRJ0802P","TGRJ0807P", "TGRJ0808P"]
     
 template = r"C:\Users\\"+ os.getlogin() +"\OneDrive - SEFAZ-RJ\Folha EGE\Exercício 2024\Teste - Marinete\Memória de Cálculo - Template.xlsx"
 
