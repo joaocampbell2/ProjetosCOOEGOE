@@ -148,7 +148,7 @@ loginSEI()
 
 processos = pd.read_excel(planilha, dtype={"DATA DA ARRECADAÇÃO" :str,"DATA DO PGTO": str,"Principal": str } )
 
-for i in range (len(processos)):
+for i in reversed(range(len(processos))):
     processo = processos.iloc[i]
     if pd.isna(processo["Atualização SELIC"]):
         try:
