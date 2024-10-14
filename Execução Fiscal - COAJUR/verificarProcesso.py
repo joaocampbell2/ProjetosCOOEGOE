@@ -1,21 +1,12 @@
-import time
-from time import sleep
 import traceback
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.common.keys import  Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import os
-import re
-from openpyxl import load_workbook
-from datetime import date, datetime
-from glob import glob
-from shutil import move
-import tabula
-from PyPDF2 import PdfReader
+from datetime import  datetime
 from marinetteSEFAZ import loginSEI, obterProcessosDeBloco, escreverAnotacao, buscarInformacaoEmDocumento, procurarArquivos,incluirProcessoEmBloco,removerProcessoDoBloco
+from tqdm import tqdm
 
 def verificarCompetencia():
     lista = procurarArquivos(navegador, "Despacho de Encaminhamento de Processo")
@@ -101,7 +92,7 @@ loginSEI(navegador,os.environ['login_sefaz'],os.environ['senha_sefaz'],'SEFAZ/CO
 
 processos = obterProcessosDeBloco(navegador, blocoSolicitado)
 
-for i in range(1,len(processos[1:]) + 1):
+for i in tqdm(range(1,len(processos[1:]) + 1)):
         
     processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
 
@@ -146,4 +137,4 @@ for i in range(1,len(processos[1:]) + 1):
         except:
             traceback.print_exc()
 
-#navegador.quit()
+navegador.quit()
