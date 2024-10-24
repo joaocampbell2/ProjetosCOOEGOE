@@ -118,7 +118,7 @@ for i in tqdm(range(1,len(processos[1:]) + 1)):
                     incluirProcessoEmBloco(navegador,nProcesso,"938324")
                     escreverAnotacao(navegador,texto,nProcesso)
                 except:    
-                    pass
+                    traceback.print_exc()
 
         except:
             traceback.print_exc()

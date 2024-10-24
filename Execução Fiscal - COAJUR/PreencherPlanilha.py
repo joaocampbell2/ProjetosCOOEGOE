@@ -1,4 +1,4 @@
-from marinetteSEFAZ import loginSEI, obterProcessosDeBloco, escreverAnotacao, buscarInformacaoEmDocumento, procurarArquivos,incluirProcessoEmBloco,removerProcessoDoBloco
+from marinetteSEFAZ import loginSEI, obterProcessosDeBloco, escreverAnotacao,buscarProcessoEmBloco, buscarInformacaoEmDocumento, procurarArquivos,incluirProcessoEmBloco,removerProcessoDoBloco
 import time
 import traceback
 from selenium import webdriver
@@ -26,10 +26,20 @@ def buscarNoDARJ():
     return lista[0].group(1), lista[1].group(1),lista[2].group(1)
 
 def buscarProcessoJudicial():
+    docs = procurarArquivos(nav,["Ofício", "Documento", "Petição"])
+    regexJudicial = r"(Execução Fiscal nº|Proc. Judicial nº.|Executivo Fiscal \(Nº CNJ\)|Executivo Fiscal):\n? ?(\d[\n*\w*\s\(\)\.,-\/]*)\n\n?" 
+    for doc in docs:
+        pJudicial = buscarInformacaoEmDocumento(nav,doc,regexJudicial,"ESTADO")
+        if pJudicial:
+            return pJudicial.group(2)
+    
+    raise Exception("Processo Judicial não encontrado")
+    
     processoJudicial = None #1 OU SEGUNDO DOCUMENTO
     #NO OFICIO É PJUDICIAL
     #NO DOCUMENTO É EXECUTIVO FISCAL
     #PGE EXCEÇÃO
+    #NÃO FOI POSSIVEL ENCONTRAR PROCESSO JUDICIAL
     
 def preencherPlanilha(processo,nCDA,nomeExecutado,valorMontante,pJudicial,index):
 
@@ -81,23 +91,29 @@ loginSEI(nav,os.environ['login_sefaz'], os.environ['senha_sefaz'], "SEFAZ/COOAJU
 processos = obterProcessosDeBloco(nav,"938324")
 try:
     for i in tqdm(range(1,len(processos[1:]) + 1)):
-        processo = nav.find_elements(By.XPATH, "//tbody//tr")[i]
-        linkProcesso = WebDriverWait(processo,3).until(EC.presence_of_element_located((By.XPATH, './/td[3]//a')))
-
+        
+        linkProcesso = buscarProcessoEmBloco(nav,i)
         nProcesso = linkProcesso.text
         linkProcesso.click()
         print(nProcesso)
         nav.switch_to.window(nav.window_handles[1])
         try:
             cda,executado,montante = buscarNoDARJ()
-            #buscarProcessoJudicial()
+            processoJudicial = buscarProcessoJudicial()
+            preencherPlanilha(nProcesso,cda,executado,montante,processoJudicial,index)
+            index += 1
+        except:
+            traceback.print_exc()
+        
         finally:
             nav.close()
             nav.switch_to.window(nav.window_handles[0])
-        preencherPlanilha(nProcesso,cda,executado,montante,"1",index)
-        index += 1
+        
+        
+        
+        
 except:
-    pass
+    traceback.print_exc()
     
 copiarPlanilha(caminhoCopia,caminhoOriginal)
  
