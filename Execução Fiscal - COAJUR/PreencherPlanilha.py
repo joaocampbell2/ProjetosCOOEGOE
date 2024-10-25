@@ -1,4 +1,4 @@
-from marinetteSEFAZ import loginSEI, obterProcessosDeBloco, escreverAnotacao,buscarProcessoEmBloco, buscarInformacaoEmDocumento, procurarArquivos,incluirProcessoEmBloco,removerProcessoDoBloco
+from marinetteSEFAZ import loginSEI, obterProcessosDeBloco, escreverAnotacao,buscarProcessoEmBloco, limparAnotacao,buscarInformacaoEmDocumento, procurarArquivos,incluirProcessoEmBloco,removerProcessoDoBloco
 import time
 import traceback
 from selenium import webdriver
@@ -18,28 +18,25 @@ def buscarNoDARJ():
         
     darj = procurarArquivos(nav, "DARJ")
     
-    regexCDA = r"CERTIDÃO\n\n([\n*\w*\s\(\)\.,-\/]*)\n\n06"
-    regexExecutado = r"NOME\n\n([\n*\w*\s\(\)\.,-]*)\n\n08"
-    regexMontante = r"TOTAL A PAGAR\n\n([\n*\w*\s\(\)\.,-]*)\n\n14"
-    lista = buscarInformacaoEmDocumento(nav,darj[-1],[regexCDA,regexExecutado,regexMontante],"DARJ")
+    regexCDA = r"CERTIDÃO\n\n(.*)\n\n06"
+    regexExecutado = r"NOME\n\n(.*\n? ?.*\n? ?.*\n? ?.*\n? ?.*\n? ?.*\n? ?.*\n? ?.*\n? ?.*)\n\n08"
+    regexMontante = r"TOTAL A PAGAR\n\n(.*)\n\n14"
+    lista = buscarInformacaoEmDocumento(nav,darj[-1],[regexCDA,regexExecutado,regexMontante],"DARJ",show=False)
         
     return lista[0].group(1), lista[1].group(1),lista[2].group(1)
 
+
 def buscarProcessoJudicial():
-    docs = procurarArquivos(nav,["Ofício", "Documento", "Petição"])
-    regexJudicial = r"(Execução Fiscal nº|Proc. Judicial nº.|Executivo Fiscal \(Nº CNJ\)|Executivo Fiscal):\n? ?(\d[\n*\w*\s\(\)\.,-\/]*)\n\n?" 
+    docs = procurarArquivos(nav,["Ofício", "Documento", "Petição", "Anexo Juntada", "Anexo SOLICITAÇÃO DA ANALISTA"])
+    regexJudicial = r"\d{7}-\d{2}[\.\/]\d{4}\.\d\.?\d{2}\.\d{4}" 
     for doc in docs:
-        pJudicial = buscarInformacaoEmDocumento(nav,doc,regexJudicial,"ESTADO")
+        pJudicial = buscarInformacaoEmDocumento(nav,doc,regexJudicial,["PROCURADORIA", "Justiça Estadual"],show=False)
         if pJudicial:
-            return pJudicial.group(2)
+            return pJudicial.group()
+    
+    
     
     raise Exception("Processo Judicial não encontrado")
-    
-    processoJudicial = None #1 OU SEGUNDO DOCUMENTO
-    #NO OFICIO É PJUDICIAL
-    #NO DOCUMENTO É EXECUTIVO FISCAL
-    #PGE EXCEÇÃO
-    #NÃO FOI POSSIVEL ENCONTRAR PROCESSO JUDICIAL
     
 def preencherPlanilha(processo,nCDA,nomeExecutado,valorMontante,pJudicial,index):
 
@@ -89,26 +86,37 @@ copiarPlanilha(caminhoOriginal,caminhoCopia)
 loginSEI(nav,os.environ['login_sefaz'], os.environ['senha_sefaz'], "SEFAZ/COOAJUR")
 
 processos = obterProcessosDeBloco(nav,"938324")
+
+
+#CRIAR EXCEÇÃO PARA PROCESSOS EM PROCESSO JUDICIAL 
+
 try:
     for i in tqdm(range(1,len(processos[1:]) + 1)):
-        
-        linkProcesso = buscarProcessoEmBloco(nav,i)
-        nProcesso = linkProcesso.text
-        linkProcesso.click()
-        print(nProcesso)
-        nav.switch_to.window(nav.window_handles[1])
-        try:
-            cda,executado,montante = buscarNoDARJ()
-            processoJudicial = buscarProcessoJudicial()
-            preencherPlanilha(nProcesso,cda,executado,montante,processoJudicial,index)
-            index += 1
-        except:
-            traceback.print_exc()
-        
-        finally:
-            nav.close()
-            nav.switch_to.window(nav.window_handles[0])
-        
+        processo = nav.find_elements(By.XPATH, "//tbody//tr")[i].text
+        if "Processo inserido na Planilha" not in processo:
+            linkProcesso = buscarProcessoEmBloco(nav,i)
+            nProcesso = linkProcesso.text
+            # limparAnotacao(nav,nProcesso)
+            
+            linkProcesso.click()
+            print(nProcesso)
+            nav.switch_to.window(nav.window_handles[1])
+            try:
+                cda,executado,montante = buscarNoDARJ()
+                processoJudicial = buscarProcessoJudicial()
+                preencherPlanilha(nProcesso,cda,executado,montante,processoJudicial,index)
+                index += 1
+            except:
+                traceback.print_exc()
+                continue
+            finally:
+                nav.close()
+                nav.switch_to.window(nav.window_handles[0])
+            
+            try:
+                escreverAnotacao(nav,["Processo inserido na Planilha"],nProcesso)
+            except:
+                traceback.print_exc()
         
         
         

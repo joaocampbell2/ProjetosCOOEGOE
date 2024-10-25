@@ -116,7 +116,6 @@ for i in tqdm(range(1,len(processos[1:]) + 1)):
             if validade == "Ok" and montante == "Ok" and competencia == "Ok":
                 try:  
                     incluirProcessoEmBloco(navegador,nProcesso,"938324")
-                    escreverAnotacao(navegador,texto,nProcesso)
                 except:    
                     traceback.print_exc()
 
