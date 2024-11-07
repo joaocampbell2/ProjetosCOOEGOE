@@ -33,13 +33,8 @@ for i in tqdm(range(1,len(processos[1:]) + 1)):
         linkProcesso.click()
         nav.switch_to.window(nav.window_handles[1])
     
-        valoresExtra = []
-        valoresOrcamentario = []
-        beneficiarios = []
-        pagamentos = []
-        cpfs = []
+
         despachos = procurarArquivos(nav, "Despacho sobre Autorização de Despesa")    
-        regexFiança = ""
         
         if grupo == "FIANÇA E VALOR APREENDIDO":
             regexFiança = r"(Beneficiário|Credor): ?(.*)\nForma de Pagamento: ?(.*)(\(\d*\))?"

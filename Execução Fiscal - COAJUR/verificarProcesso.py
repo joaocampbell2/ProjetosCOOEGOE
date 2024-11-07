@@ -7,7 +7,7 @@ import os
 from datetime import  datetime
 from marinetteSEFAZ import loginSEI, obterProcessosDeBloco, escreverAnotacao, buscarInformacaoEmDocumento, procurarArquivos,incluirProcessoEmBloco,removerProcessoDoBloco
 from tqdm import tqdm
-
+import time
 def verificarCompetencia():
     lista = procurarArquivos(navegador, "Despacho de Encaminhamento de Processo")
     pattern1 = r"(?i)(Para o processamento dos? DARJs?|solicitamos o processamento dos? DARJs?|Para processamento dos? DARJs?|Solicitando processar os? Darjs?)"
@@ -92,10 +92,12 @@ loginSEI(navegador,os.environ['login_sefaz'],os.environ['senha_sefaz'],'SEFAZ/CO
 
 processos = obterProcessosDeBloco(navegador, blocoSolicitado)
 
-for i in tqdm(range(1,len(processos[1:]) + 1)):
-        
-    processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
+numProcessos = len(processos)
+i = 1
 
+while i != numProcessos:
+            
+    processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
     if "Montante" not in processo.text:
 
 
@@ -130,10 +132,14 @@ for i in tqdm(range(1,len(processos[1:]) + 1)):
         try:
             if validade == "Ok" and montante == "Ok" and competencia == "Ok":
                 removerProcessoDoBloco(navegador, nProcesso)
-                i -= 1
+                navegador.find_elements(By.XPATH, "//tbody//tr")
+                numProcessos -= 1
             else:
                 escreverAnotacao(navegador,texto,nProcesso)
+                i += 1
         except:
             traceback.print_exc()
+    else:
+        i+=1
 
 navegador.quit()
