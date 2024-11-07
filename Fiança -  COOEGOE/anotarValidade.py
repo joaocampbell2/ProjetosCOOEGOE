@@ -1,4 +1,3 @@
-import time
 import traceback
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -10,14 +9,14 @@ from openpyxl import load_workbook
 from marinetteSEFAZ import loginSEI, obterProcessosDeBloco,procurarArquivos, buscarInformacaoEmDocumento, escreverAnotacao, salvarPlanilha
     
 def encontrarFormaDePagamento():
-    despachos = procurarArquivos(navegador,"Despacho sobre Autorização de Despesa")
+    despachos = procurarArquivos(nav,"Despacho sobre Autorização de Despesa")
     regexBeneficiario = r"Beneficiário:(.*)\n"
     regexFormaDePagamento = r"Forma de Pagamento:(.*)\n"
 
     for despacho in reversed(despachos):
         try: 
-            beneficiario = buscarInformacaoEmDocumento(navegador,despacho,regexBeneficiario,"Rio de Janeiro").group(1).upper()
-            formaPagamentoDespacho = buscarInformacaoEmDocumento(navegador,despacho,regexFormaDePagamento,"Rio de Janeiro").group(1).upper()
+            beneficiario = buscarInformacaoEmDocumento(nav,despacho,regexBeneficiario,"Rio de Janeiro").group(1).upper()
+            formaPagamentoDespacho = buscarInformacaoEmDocumento(nav,despacho,regexFormaDePagamento,"Rio de Janeiro").group(1).upper()
 
         
             if "PERDIMENTO" in formaPagamentoDespacho:
@@ -35,8 +34,8 @@ def encontrarFormaDePagamento():
             if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho:
                 return "Guia"
 
-            regexBanco = r"(ITAÚ|NUBANK|SANTANDER|Santander|C6 Bank|BANCO DO BRASIL|SICOOB|C6 BANK|PICPAY|CAIXA|CEF|SICRED|BANCO C6)"
-            banco = buscarInformacaoEmDocumento(navegador,despacho,regexBanco,"Rio de Janeiro")
+            regexBanco = r"(ITAÚ|NUBANK|SANTANDER|Santander|C6 Bank|BANCO DO BRASIL|SICOOB|C6 BANK|PICPAY|CAIXA|CEF|SICRED|BANCO C6|MERCADO PAGO|ITAU)"
+            banco = buscarInformacaoEmDocumento(nav,despacho,regexBanco,"Rio de Janeiro")
             if banco == None:
                 banco = ""
             else:
@@ -55,8 +54,8 @@ def encontrarFormaDePagamento():
             pass
     
     try:
-        indebitos = procurarArquivos(navegador, "Correspondência Interna")
-        formaDePagamento = buscarInformacaoEmDocumento(navegador,indebitos[0],r"(INDÉBITO)").group(1)
+        indebitos = procurarArquivos(nav, "Correspondência Interna")
+        formaDePagamento = buscarInformacaoEmDocumento(nav,indebitos[0],r"(INDÉBITO)").group(1)
         if formaDePagamento:
             return "Indébito"
     except:
@@ -74,9 +73,9 @@ def encontrarValidade():
     validade = "SEM VALIDADE"
     
     if tipo == "FIANÇA":
-        docs = procurarArquivos(navegador, ["Guia", "GRERJ"])
+        docs = procurarArquivos(nav, ["Guia", "GRERJ"])
         for doc in reversed(docs):
-            banco = buscarInformacaoEmDocumento(navegador,doc,regexBanco)
+            banco = buscarInformacaoEmDocumento(nav,doc,regexBanco)
             if banco != None:
                 if banco.group(1) == "BANCO DO BRASIL":
                     regexValidade = r"(\d{2}\/\d{2}\/\d{4})\n"
@@ -86,7 +85,7 @@ def encontrarValidade():
                 else:
                     continue
                 
-                validade = buscarInformacaoEmDocumento(navegador,doc,regexValidade)
+                validade = buscarInformacaoEmDocumento(nav,doc,regexValidade)
                 print(validade)
 
                 return validade.group(1)
@@ -96,12 +95,12 @@ def encontrarValidade():
 
     if tipo =="EXECUÇÃO FISCAL":
         
-        docs = procurarArquivos(navegador, "Despacho sobre Autorização de Despesa")
-        regexValidade = r"\bvalidade de (.*?)\b do referido"
+        docs = procurarArquivos(nav, "Despacho sobre Autorização de Despesa")
+        regexValidade = r"\bvalidade de (.*?)\b ? do referido"
         
-        validade = buscarInformacaoEmDocumento(navegador,docs[-1],regexValidade)
+        validade = buscarInformacaoEmDocumento(nav,docs[-1],regexValidade,)
                
-        return validade
+        return validade.group(1)
     
 
 
@@ -148,17 +147,17 @@ match tipo:
 
 salvarPlanilha(df, marinette, bloco)
 
-navegador = webdriver.Firefox()
+nav = webdriver.Firefox()
 
-loginSEI(navegador, os.environ['login_sefaz'],os.environ['senha_sefaz'],"SEFAZ/COOEGOE")
+loginSEI(nav, os.environ['login_sefaz'],os.environ['senha_sefaz'],"SEFAZ/COOEGOE")
 
-processos = obterProcessosDeBloco(navegador, bloco)
+processos = obterProcessosDeBloco(nav, bloco)
 
 for i in range(1,len(processos)):
         
-        WebDriverWait(navegador,20).until(EC.invisibility_of_element_located(((By.XPATH, "//div[@class = 'sparkling-modal-close']"))))
-        WebDriverWait(navegador,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
-        processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
+        WebDriverWait(nav,20).until(EC.invisibility_of_element_located(((By.XPATH, "//div[@class = 'sparkling-modal-close']"))))
+        WebDriverWait(nav,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
+        processo = nav.find_elements(By.XPATH, "//tbody//tr")[i]
         nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
         
         if nProcesso not in df['PROCESSO'].values or pd.isna(df.loc[df[df["PROCESSO"] == nProcesso].index[0], "FORMA DE PAGAMENTO"]):                          
@@ -175,7 +174,7 @@ for i in range(1,len(processos)):
             
             try:
                 WebDriverWait(processo,20).until(EC.element_to_be_clickable(((By.XPATH, './/td[3]//a')))).click()
-                navegador.switch_to.window(navegador.window_handles[1])
+                nav.switch_to.window(nav.window_handles[1])
                 
             
                 if tipo == "FIANÇA":
@@ -195,15 +194,15 @@ for i in range(1,len(processos)):
                 continue
      
             finally:
-                navegador.close()
-                navegador.switch_to.window(navegador.window_handles[0])
+                nav.close()
+                nav.switch_to.window(nav.window_handles[0])
             
             try:
-                #escreverAnotacao(navegador,texto,nProcesso)    
+                escreverAnotacao(nav,texto,nProcesso)    
                 salvarPlanilha(df,marinette,bloco)
             except:
                 traceback.print_exc()
                 continue
 
 
-navegador.quit()
+nav.quit()
