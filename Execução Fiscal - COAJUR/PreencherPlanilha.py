@@ -27,10 +27,10 @@ def buscarNoDARJ():
 
 
 def buscarProcessoJudicial():
-    docs = procurarArquivos(nav,["Ofício", "Documento", "Petição", "Anexo Juntada", "Anexo SOLICITAÇÃO DA ANALISTA"])
+    docs = procurarArquivos(nav,["Ofício", "Documento", "Petição", "Anexo Juntada", "Anexo SOLICITAÇÃO DA ANALISTA", "Despacho"])
     regexJudicial = r"\d{7}-\d{2}[\.\/]\d{4}\.\d\.?\d{2}\.\d{4}" 
     for doc in docs:
-        pJudicial = buscarInformacaoEmDocumento(nav,doc,regexJudicial,["PROCURADORIA", "Justiça Estadual"],show=False)
+        pJudicial = buscarInformacaoEmDocumento(nav,doc,regexJudicial,["PROCURADORIA", "Justiça Estadual", "PODER", "Poder"],show=False)
         if pJudicial:
             return pJudicial.group()
     
@@ -95,20 +95,22 @@ try:
         processo = nav.find_elements(By.XPATH, "//tbody//tr")[i].text
         if "Processo inserido na Planilha" not in processo:
             linkProcesso = buscarProcessoEmBloco(nav,i)
-            nProcesso = linkProcesso.text
-            # limparAnotacao(nav,nProcesso)
-            
+            nProcesso = linkProcesso.text            
             linkProcesso.click()
             print(nProcesso)
             nav.switch_to.window(nav.window_handles[1])
             try:
                 cda,executado,montante = buscarNoDARJ()
+                executado  = executado.replace("/n", "")
                 processoJudicial = buscarProcessoJudicial()
                 preencherPlanilha(nProcesso,cda,executado,montante,processoJudicial,index)
                 index += 1
             except:
                 traceback.print_exc()
+                incluirProcessoEmBloco(nav,nProcesso,"616986")
+                escreverAnotacao(nav,["Não foi possível preencher o processo na planilha automaticamente"],nProcesso)
                 continue
+            
             finally:
                 nav.close()
                 nav.switch_to.window(nav.window_handles[0])
@@ -124,4 +126,4 @@ except:
     traceback.print_exc()
     
 copiarPlanilha(caminhoCopia,caminhoOriginal)
- 
+nav.quit()
