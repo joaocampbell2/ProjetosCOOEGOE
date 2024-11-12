@@ -122,8 +122,6 @@ def extrairOB(processo,tipoOB):
     else:
         print("Não há OB disponível")
 
-
-
 def alterarNomeDownload(processo,tipoOB,numeroOB):
     caminho = "C:/users/" + os.getlogin() + "/" + "Downloads/"
     processo = re.sub("[/-]","_",processo)
@@ -178,7 +176,6 @@ def anotarErro(erro,processo):
     nav.switch_to.window(nav.window_handles[0])
     print("Erro de pagamento alertado")
 
-
 bloco = input("Digite o número do bloco: ")
 bateria = input("Digite a bateria: ")
 forma = input("Digite qual forma de pagamento é pra extrair as OB's:\n1) Depósito Bradesco\n2) Depósito outros bancos\n3) Guia\n4) Todos\n")
@@ -208,7 +205,8 @@ for i in range(1,len(processos)):
         linkProcesso = buscarProcessoEmBloco(nav,i)
         processosParaBaixar.append(linkProcesso.text) 
 
-processosParaBaixar = ["SEI-040009/001632/2024","SEI-040009/001577/2024"]
+print(processosParaBaixar)
+
 loginSIAFE(nav,os.environ['cpf'],os.environ['senha_siafe'])
 
 link = 'https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira/ordemBancariaExtraOrcamentariaCad.jsp'

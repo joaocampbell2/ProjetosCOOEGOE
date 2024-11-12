@@ -3,10 +3,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import pandas as pd
 import os
-from openpyxl import load_workbook
-from marinetteSEFAZ import loginSEI,incluirDocumento,buscarNumeroDocumento,inserirHyperlinkSEI, obterProcessosDeBloco,procurarArquivos, buscarInformacaoEmDocumento, escreverAnotacao, incluirEmBlocoDeAssinatura, buscarProcessoEmBloco
+from marinetteSEFAZ import loginSEI,incluirDespacho,buscarNumeroDocumento,inserirHyperlinkSEI, obterProcessosDeBloco,procurarArquivos, buscarInformacaoEmDocumento, escreverAnotacao, incluirEmBlocoDeAssinatura, buscarProcessoEmBloco
 from selenium.webdriver.common.keys import  Keys
 
 
@@ -30,7 +28,7 @@ def preencherDespacho(filtro, comprovantes):
         iframes = nav.find_elements(By.TAG_NAME, 'iframe')
 
 
-        nav.switch_to.frame(iframes[1])
+        nav.switch_to.frame(iframes[2])
         
         corpoTexto = nav.find_element(By.TAG_NAME, 'body')
         corpoTexto.click()
@@ -38,12 +36,15 @@ def preencherDespacho(filtro, comprovantes):
         
         if filtro == "68112290":
             
+            corpoTexto.send_keys(Keys.PAGE_UP)
+            corpoTexto.send_keys(Keys.ARROW_DOWN)
             corpoTexto.send_keys(Keys.ARROW_DOWN)
 
-            for i in range(2):
+            for i in range(3):
                 corpoTexto.send_keys(Keys.ARROW_LEFT)
             for i in range(12):
                 corpoTexto.send_keys(Keys.BACKSPACE)
+                
         elif filtro == "68111827":
 
             corpoTexto.send_keys(Keys.PAGE_UP)
@@ -59,7 +60,8 @@ def preencherDespacho(filtro, comprovantes):
             nav.switch_to.frame(iframes[2])
             corpoTexto.send_keys(Keys.SPACE)
    
-         
+        corpoTexto.send_keys(Keys.BACKSPACE)
+        
     except:
         traceback.print_exc()
     
@@ -94,12 +96,15 @@ for i in range(1,len(processos)):
         
             filtro = descobrirTipoProcesso()
             comprovantes = buscarNumeroDocumento(nav,"Comprovante",lista=True)
-            if comprovantes == []:
-                comprovantes = buscarNumeroDocumento(nav,"OB",lista=True)
-            print(filtro)
-            incluirDocumento(nav,"Despacho de Encaminhamento de Processo","Documento Modelo",modelo=filtro,hipotese='Controle Interno (Art. 26, § 3º, da Lei nº 10.180/2001)' )
-            preencherDespacho(filtro,comprovantes)
+            incluirDespacho(nav,"Despacho de Encaminhamento de Processo","Documento Modelo",modelo=filtro,hipotese='Controle Interno (Art. 26, § 3º, da Lei nº 10.180/2001)' )
+            try:
             
+                preencherDespacho(filtro,comprovantes)
+            except:
+                nav.close()
+                nav.switch_to.window(nav.window_handles[1])
+                traceback.print_exc()
+                pass
             if filtro == "68112290":
                 assinatura = "506041 - Fiança GREs - COOCR/COOAJUR"
             if filtro == "68111827":
