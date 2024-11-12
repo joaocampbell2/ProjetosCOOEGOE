@@ -85,12 +85,12 @@ copiarPlanilha(caminhoOriginal,caminhoCopia)
 
 loginSEI(nav,os.environ['login_sefaz'], os.environ['senha_sefaz'], "SEFAZ/COOAJUR")
 
-processos = obterProcessosDeBloco(nav,"938324")
 
+bloco = "938324"
 
-#CRIAR EXCEÇÃO PARA PROCESSOS EM PROCESSO JUDICIAL 
+for i in range(2):
+    processos = obterProcessosDeBloco(nav,bloco)
 
-try:
     for i in tqdm(range(1,len(processos[1:]) + 1)):
         processo = nav.find_elements(By.XPATH, "//tbody//tr")[i].text
         if "Processo inserido na Planilha" not in processo:
@@ -119,11 +119,9 @@ try:
                 escreverAnotacao(nav,["Processo inserido na Planilha"],nProcesso)
             except:
                 traceback.print_exc()
-        
-        
-        
-except:
-    traceback.print_exc()
+    nav.find_elements(By.XPATH,"//a[@title= 'Exibir/Ocultar Menu do Sistema']")[1].click()
+    time.sleep(2)
+    bloco = "960650"
     
 copiarPlanilha(caminhoCopia,caminhoOriginal)
 nav.quit()

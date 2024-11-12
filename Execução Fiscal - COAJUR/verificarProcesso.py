@@ -76,7 +76,7 @@ def verificarValorEValidade():
         return "DARJ não encontrado", "DARJ não encontrado"
 
     if montanteDARJ != montanteGuia:
-        montante  = "Montante Guia diferente de Montante DARJ"            
+        montante  = "Diferente"            
     else:
         montante = "Ok"
         
@@ -120,6 +120,8 @@ while i != numProcessos:
                     incluirProcessoEmBloco(navegador,nProcesso,"938324")
                 except:    
                     traceback.print_exc()
+            elif validade == "Ok" and montante == "Diferente" and competencia == "Ok":
+                incluirProcessoEmBloco(navegador,nProcesso,"960650")
 
         except:
             traceback.print_exc()
@@ -130,10 +132,12 @@ while i != numProcessos:
             navegador.switch_to.window(navegador.window_handles[0])
 
         try:
-            if validade == "Ok" and montante == "Ok" and competencia == "Ok":
+            if validade == "Ok" and (montante == "Ok" or montante == "Diferente") and competencia == "Ok":
                 removerProcessoDoBloco(navegador, nProcesso)
                 navegador.find_elements(By.XPATH, "//tbody//tr")
                 numProcessos -= 1
+
+                
             else:
                 escreverAnotacao(navegador,texto,nProcesso)
                 i += 1
