@@ -11,14 +11,17 @@ from selenium.webdriver.common.keys import  Keys
 def descobrirTipoProcesso():
     docs = procurarArquivos(nav,"Despacho de Encaminhamento de Processo")
     for doc in reversed(docs):
-        filtro = buscarInformacaoEmDocumento(nav,doc,"DARJ","Estado")
-        if filtro:
-            return "68111827"
-        filtro = buscarInformacaoEmDocumento(nav,doc,"GRE","Estado")
-        if filtro:
-            return "68112290"
+        try:
+            modelo = buscarInformacaoEmDocumento(nav,doc,"DARJ","Estado")
+            if modelo:
+                return "68111827"
+            modelo = buscarInformacaoEmDocumento(nav,doc,"GRE","Estado")
+            if modelo:
+                return "68112290"
+        except:
+            pass
         
-def preencherDespacho(filtro, comprovantes):
+def preencherDespacho(tipo, comprovantes,modelo= None):
     nav.switch_to.window(nav.window_handles[2])
     nav.maximize_window()
     nav.switch_to.default_content()
@@ -33,27 +36,38 @@ def preencherDespacho(filtro, comprovantes):
         corpoTexto = nav.find_element(By.TAG_NAME, 'body')
         corpoTexto.click()
         
+        if tipo == "FIANÇA":
         
-        if filtro == "68112290":
-            
-            corpoTexto.send_keys(Keys.PAGE_UP)
-            corpoTexto.send_keys(Keys.ARROW_DOWN)
-            corpoTexto.send_keys(Keys.ARROW_DOWN)
-
-            for i in range(3):
-                corpoTexto.send_keys(Keys.ARROW_LEFT)
-            for i in range(12):
-                corpoTexto.send_keys(Keys.BACKSPACE)
+            if modelo == "68112290":
                 
-        elif filtro == "68111827":
+                corpoTexto.send_keys(Keys.PAGE_UP)
+                corpoTexto.send_keys(Keys.ARROW_DOWN)
+                corpoTexto.send_keys(Keys.ARROW_DOWN)
 
+                for i in range(3):
+                    corpoTexto.send_keys(Keys.ARROW_LEFT)
+                for i in range(12):
+                    corpoTexto.send_keys(Keys.BACKSPACE)
+                    
+            elif modelo == "68111827":
+
+                corpoTexto.send_keys(Keys.PAGE_UP)
+                corpoTexto.send_keys(Keys.END)
+                for i in range(41):
+                    corpoTexto.send_keys(Keys.ARROW_LEFT)
+                for i in range(7):
+                    corpoTexto.send_keys(Keys.BACKSPACE)
+        
+        if tipo =="EXECUÇÃO FISCAL":
             corpoTexto.send_keys(Keys.PAGE_UP)
             corpoTexto.send_keys(Keys.END)
-            for i in range(41):
-                corpoTexto.send_keys(Keys.ARROW_LEFT)
-            for i in range(7):
+            for i in range(8):
+                corpoTexto.send_keys(Keys.CONTROL + Keys.ARROW_LEFT)
+            for i in range(4):
+                corpoTexto.send_keys(Keys.ARROW_RIGHT)
+            for i in range(4):
                 corpoTexto.send_keys(Keys.BACKSPACE)
-                
+
                 
         for comprovante in comprovantes:
             inserirHyperlinkSEI(nav,comprovante)
@@ -75,7 +89,14 @@ def preencherDespacho(filtro, comprovantes):
         
 
 bloco = input("Digite o número do bloco: ")
+tipo = input("Selecione o tipo de processo\n1) Execução\n2) Fiança\n")
 nav = webdriver.Firefox()
+
+match tipo:
+    case "1":
+        tipo = "EXECUÇÃO FISCAL"
+    case "2":
+        tipo = "FIANÇA"
 
 loginSEI(nav, os.environ['login_sefaz'],os.environ['senha_sefaz'],"SEFAZ/COOEGOE")
 
@@ -88,29 +109,32 @@ for i in range(1,len(processos)):
     linkProcesso = buscarProcessoEmBloco(nav,i)    
     nProcesso = linkProcesso.text
     
-    if "Comprovantes Ok" in textoProcesso and "Despacho O" not in textoProcesso:
+    if "COMPROVANTES OK" in textoProcesso.upper() and "DESPACHO OK" not in textoProcesso.upper():
         print(nProcesso)
         linkProcesso.click()
         nav.switch_to.window(nav.window_handles[1])
         try:
-        
-            filtro = descobrirTipoProcesso()
+            if tipo == "FIANÇA":
+                modelo = descobrirTipoProcesso()
+            else:
+                modelo = "68113483"
             comprovantes = buscarNumeroDocumento(nav,"Comprovante",lista=True)
-            incluirDespacho(nav,"Despacho de Encaminhamento de Processo","Documento Modelo",modelo=filtro,hipotese='Controle Interno (Art. 26, § 3º, da Lei nº 10.180/2001)' )
+            incluirDespacho(nav,"Despacho de Encaminhamento de Processo","Documento Modelo",modelo=modelo,hipotese='Controle Interno (Art. 26, § 3º, da Lei nº 10.180/2001)' )
             try:
             
-                preencherDespacho(filtro,comprovantes)
+                preencherDespacho(tipo,comprovantes,modelo = modelo)
             except:
                 nav.close()
                 nav.switch_to.window(nav.window_handles[1])
                 traceback.print_exc()
                 pass
-            if filtro == "68112290":
+            if modelo == "68112290":
                 assinatura = "506041 - Fiança GREs - COOCR/COOAJUR"
-            if filtro == "68111827":
+            if modelo == "68111827":
                 assinatura = "135319 - Fiança DARJs E PAs COM PROBLEMAS - COOAJUR"
-            
-            if "Guia" not in textoProcesso:
+            if modelo == "68113483":
+                assinatura = "407903 - Execução Fiscal"
+            if "Guia" not in textoProcesso or tipo == "EXECUÇÃO FISCAL":
                 incluirEmBlocoDeAssinatura(nav,assinatura)
             
         except:
@@ -121,3 +145,5 @@ for i in range(1,len(processos)):
             nav.switch_to.window(nav.window_handles[0])
             
         escreverAnotacao(nav,["Despacho Ok"],nProcesso)
+
+nav.quit()

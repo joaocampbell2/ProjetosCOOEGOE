@@ -1,13 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
-import pandas as pd
 import os
-import glob
-from datetime import date
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import  Keys
 from marinetteSEFAZ import loginSEI,loginSIAFE, obterProcessosDeBloco,buscarProcessoEmBloco,escreverAnotacao
 import traceback
 from selenium.webdriver.support.ui import Select
@@ -15,7 +11,7 @@ import re
 from pathlib import Path
 from os.path import getmtime
 import shutil
-
+from tqdm import tqdm
 def extrairOB(processo,tipoOB):
     if tipoOB == "Extra":
         index = 12
@@ -176,7 +172,8 @@ def anotarErro(erro,processo):
     nav.switch_to.window(nav.window_handles[0])
     print("Erro de pagamento alertado")
 
-bloco = input("Digite o número do bloco: ")
+bloco = (input("Digite o número do bloco: "))
+tipo = int(input("Digite o tipo do bloco: "))
 bateria = input("Digite a bateria: ")
 forma = input("Digite qual forma de pagamento é pra extrair as OB's:\n1) Depósito Bradesco\n2) Depósito outros bancos\n3) Guia\n4) Todos\n")
 nav = webdriver.Firefox()
@@ -206,19 +203,22 @@ for i in range(1,len(processos)):
         processosParaBaixar.append(linkProcesso.text) 
 
 print(processosParaBaixar)
-
 loginSIAFE(nav,os.environ['cpf'],os.environ['senha_siafe'])
 
 link = 'https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira/ordemBancariaExtraOrcamentariaCad.jsp'
 tipoOB = "Extra"
 erros = []
 
-for i in range(0,2):
+
+pbar = tqdm(total=len(processosParaBaixar) * tipo)
+
+for i in range(0,tipo):
     nav.get(link) 
     for processo in processosParaBaixar:
         print(processo + " " + tipoOB)
         try:
             extrairOB(processo,tipoOB)
+            pbar.update(1)
         except:
             print('Não Foi possível extrair a OB ' + tipoOB )
             erros.append({"processo": processo,"tipo": tipoOB, "link": link})
@@ -238,6 +238,8 @@ while len(erros) > 0:
     try:
         extrairOB(erro["processo"],erro["tipo"])
         erros.pop(0)
+        pbar.update(1)
+
     except:
         try:
             nav.find_element(By.XPATH,"//*[contains(text(), 'Ocorreu um erro interno.')]")
@@ -250,6 +252,5 @@ while len(erros) > 0:
         traceback.print_exc()
         time.sleep(2) 
         
-    
-
+pbar.close()
 nav.quit()

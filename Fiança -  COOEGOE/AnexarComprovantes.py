@@ -34,10 +34,11 @@ for i in range(1,len(processos)):
     processo = nav.find_elements(By.XPATH, "//tbody//tr")[i]
     linkProcesso = buscarProcessoEmBloco(nav,i)
     nProcesso = linkProcesso.text
-    print(nProcesso)  
-    if  "Comprovantes Ok" not in processo.text:
+    if  "COMPROVANTES OK" not in processo.text.upper():
         arquivosProcesso = verificaArquivosPasta(nProcesso)
         if arquivosProcesso:
+            print(nProcesso)  
+
             linkProcesso.click()
             nav.switch_to.window(nav.window_handles[1])
             print(arquivosProcesso)
