@@ -23,7 +23,7 @@ def buscarNoDARJ():
     regexMontante = r"TOTAL A PAGAR\n\n(.*)\n\n14"
     lista = buscarInformacaoEmDocumento(nav,darj[-1],[regexCDA,regexExecutado,regexMontante],"DARJ",show=False)
         
-    return lista[0].group(1), lista[1].group(1),lista[2].group(1)
+    return lista[0].group(1), lista[1].group(1).replace("\n", ""),lista[2].group(1)
 
 
 def buscarProcessoJudicial():
@@ -101,7 +101,6 @@ for i in range(2):
             nav.switch_to.window(nav.window_handles[1])
             try:
                 cda,executado,montante = buscarNoDARJ()
-                executado  = executado.replace("/n", "")
                 processoJudicial = buscarProcessoJudicial()
                 preencherPlanilha(nProcesso,cda,executado,montante,processoJudicial,index)
                 index += 1
@@ -122,6 +121,5 @@ for i in range(2):
     nav.find_elements(By.XPATH,"//a[@title= 'Exibir/Ocultar Menu do Sistema']")[1].click()
     time.sleep(2)
     bloco = "960650"
-    
-copiarPlanilha(caminhoCopia,caminhoOriginal)
+    copiarPlanilha(caminhoCopia,caminhoOriginal)
 nav.quit()

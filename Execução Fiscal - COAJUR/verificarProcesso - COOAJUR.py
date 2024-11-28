@@ -94,7 +94,7 @@ processos = obterProcessosDeBloco(navegador, blocoSolicitado)
 
 numProcessos = len(processos)
 i = 1
-
+nProcesso = ""
 while i != numProcessos:
             
     processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
@@ -102,47 +102,52 @@ while i != numProcessos:
 
 
         linkProcesso = WebDriverWait(processo,3).until(EC.presence_of_element_located((By.XPATH, './/td[3]//a')))
-
-        nProcesso = linkProcesso.text
-        linkProcesso.click()
-        print(nProcesso)
-        navegador.switch_to.window(navegador.window_handles[1])
-            
-        try:
-            
-            validade, montante = verificarValorEValidade()
-
-            competencia = verificarCompetencia()
-            texto = ["Validade DARJ: " + validade, "Montante: " + montante, "Competência: " + competencia]
-
-            if validade == "Ok" and montante == "Ok" and competencia == "Ok":
-                try:  
-                    incluirProcessoEmBloco(navegador,nProcesso,"938324")
-                except:    
-                    traceback.print_exc()
-            elif validade == "Ok" and montante == "Diferente" and competencia == "Ok":
-                incluirProcessoEmBloco(navegador,nProcesso,"960650")
-
-        except:
-            traceback.print_exc()
-            continue
-
-        finally:
-            navegador.close()
-            navegador.switch_to.window(navegador.window_handles[0])
-
-        try:
-            if validade == "Ok" and (montante == "Ok" or montante == "Diferente") and competencia == "Ok":
-                removerProcessoDoBloco(navegador, nProcesso)
-                navegador.find_elements(By.XPATH, "//tbody//tr")
-                numProcessos -= 1
-
+        if linkProcesso.text != nProcesso:
+            nProcesso = linkProcesso.text
+            linkProcesso.click()
+            print(nProcesso)
+            navegador.switch_to.window(navegador.window_handles[1])
                 
-            else:
-                escreverAnotacao(navegador,texto,nProcesso)
-                i += 1
-        except:
-            traceback.print_exc()
+            try:
+                
+                validade, montante = verificarValorEValidade()
+
+                competencia = verificarCompetencia()
+                texto = ["Validade DARJ: " + validade, "Montante: " + montante, "Competência: " + competencia]
+
+                if validade == "Ok" and montante == "Ok" and competencia == "Ok":
+                    try:  
+                        incluirProcessoEmBloco(navegador,nProcesso,"938324")
+                    except:    
+                        traceback.print_exc()
+                elif validade == "Ok" and montante == "Diferente" and competencia == "Ok":
+                    try:
+                        incluirProcessoEmBloco(navegador,nProcesso,"960650")
+                    except:
+                        traceback.print_exc()
+
+            except:
+                traceback.print_exc()
+                continue
+
+            finally:
+                navegador.close()
+                navegador.switch_to.window(navegador.window_handles[0])
+
+            try:
+                if validade == "Ok" and (montante == "Ok" or montante == "Diferente") and competencia == "Ok":
+                    removerProcessoDoBloco(navegador, nProcesso)
+                    navegador.find_elements(By.XPATH, "//tbody//tr")
+                    numProcessos -= 1
+
+                    
+                else:
+                    escreverAnotacao(navegador,texto,nProcesso)
+                    i += 1
+            except:
+                traceback.print_exc()
+        else:
+            i+= 1
     else:
         i+=1
 
