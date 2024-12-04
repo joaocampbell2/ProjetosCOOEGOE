@@ -40,13 +40,13 @@ def preencherDespacho(tipo, comprovantes,modelo= None):
         
             if modelo == "68112290":
                 
-                corpoTexto.send_keys(Keys.PAGE_UP)
-                corpoTexto.send_keys(Keys.ARROW_DOWN)
-                corpoTexto.send_keys(Keys.ARROW_DOWN)
+                corpoTexto.send_keys(Keys.PAGE_DOWN)
+                corpoTexto.send_keys(Keys.ARROW_UP)
+                corpoTexto.send_keys(Keys.END)
 
-                for i in range(3):
+                for _ in range(2):
                     corpoTexto.send_keys(Keys.ARROW_LEFT)
-                for i in range(12):
+                for _ in range(12):
                     corpoTexto.send_keys(Keys.BACKSPACE)
                     
             elif modelo == "68111827":
