@@ -42,17 +42,19 @@ for i in range(1,len(processos)):
             linkProcesso.click()
             nav.switch_to.window(nav.window_handles[1])
             print(arquivosProcesso)
-        
+            cont = 0
             for arquivo in arquivosProcesso:
                 try:
                     ob = re.search(r"(\d{4}OB\d{5})",arquivo).group(1)  
                     incluirDocumentoExterno(nav,"Comprovante",arquivo,nome=ob)
+                    cont +=1
                 except:
                     traceback.print_exc()
                     continue
             nav.close()
             nav.switch_to.window(nav.window_handles[0])
-            escreverAnotacao(nav,"Comprovantes Ok", nProcesso)
+            if cont >0:
+                escreverAnotacao(nav,"Comprovantes Ok", nProcesso)
               
 nav.quit()
     
