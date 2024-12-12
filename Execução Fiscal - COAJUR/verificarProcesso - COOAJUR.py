@@ -44,7 +44,11 @@ def verificarValorEValidade():
         lista = buscarInformacaoEmDocumento(navegador,doc,regexSUAR,"SUAR")
         if lista:
             validade = lista[0].group(1)
-            montanteDARJ = lista[1].group(1)
+            try:
+                montanteDARJ = lista[1].group(1)
+            except:
+                montanteDARJ = buscarInformacaoEmDocumento(navegador,doc,r"Total\n ?([\n*\w*\s\(\)\.,-]*)","SUAR")
+                validade = "16/02/2030"
             break
         if not lista:
             return "Impossível verificar DARJ", "Impossível verificar DARJ"
@@ -86,17 +90,17 @@ def verificarValorEValidade():
 
 navegador = webdriver.Firefox()
 
-blocoSolicitado = "616986"
+blocoSolicitado = "941538"
 
 loginSEI(navegador,os.environ['login_sefaz'],os.environ['senha_sefaz'],'SEFAZ/COOAJUR' )
 
 processos = obterProcessosDeBloco(navegador, blocoSolicitado)
 
-numProcessos = len(processos)
+numProcessos = len(processos) - 1
 i = 1
 nProcesso = ""
-while i != numProcessos:
-            
+while i <= numProcessos:
+     
     processo = navegador.find_elements(By.XPATH, "//tbody//tr")[i]
     if "Montante" not in processo.text:
 
