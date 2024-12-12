@@ -47,7 +47,13 @@ def verificarSaldo():
     WebDriverWait(navegador,10).until(EC.element_to_be_clickable((By.XPATH, "//input[contains(@name, 'UnidadeGestora')]"))).send_keys("370200")
 
     select = Select(navegador.find_element(By.XPATH, '//select[@id = "tplSip:cbxMes::content"]'))
-    select.select_by_index(int(mes) + 1)
+    
+    if int(mes)> 12:
+        x = 12
+    else:
+        x = mes
+    
+    select.select_by_index(int(x) + 1)
     navegador.find_element(By.XPATH, '//input[contains(@id, "SaldoZerado")]').click()
     time.sleep(2)
     credito = buscarSaldos("622110101", "2774")
@@ -223,7 +229,7 @@ def atualizarRetencoes():
     "proderj": retencoes["E24"],
     "repasseSefaz": retencoes["E25"]
 }
-      
+
     buscarValores(celulasBancos,0,pgov0832p,6,0)
     
     celulas = {
@@ -249,18 +255,20 @@ def atualizarRetencoes():
 def buscarValores(dicionario,pagina,arquivo,colunaValores,colunaNome):
 
     df = tabula.read_pdf(arquivo, pages='all', pandas_options={'header': None})[pagina]
+    print(df)
     df[colunaValores] = df[colunaValores].str.replace('.', '')
     df[colunaValores] = df[colunaValores].str.replace(',', '.')
-    
-    if arquivo == tgrj0801p and pagina == -1 :
-        df[colunaValores + 1] = df[colunaValores +1].str.replace('.', '')
-        df[colunaValores + 1] = df[colunaValores + 1].str.replace(',', '.')
-        
-        df[colunaValores] = df[colunaValores].fillna(0)
-        df[colunaValores + 1] = df[colunaValores + 1].fillna(0) 
-        
-        df[colunaValores] = df[colunaValores].astype(float) + df[colunaValores + 1].astype(float)
-
+    try:
+        if arquivo == tgrj0801p and pagina == -1 :
+            df[colunaValores + 1] = df[colunaValores +1].str.replace('.', '')
+            df[colunaValores + 1] = df[colunaValores + 1].str.replace(',', '.')
+            
+            df[colunaValores] = df[colunaValores].fillna(0)
+            df[colunaValores + 1] = df[colunaValores + 1].fillna(0) 
+            
+            df[colunaValores] = df[colunaValores].astype(float) + df[colunaValores + 1].astype(float)
+    except:
+        pass
     
     for chave,valor in dicionario.items():
         valor.value = somarValores(df,chave,colunaValores,colunaNome)
@@ -298,9 +306,33 @@ def encontrarRepasse(celula):
     celula.value = float(valorRepasse)
 
 
+def atualizarDecimoTerceiro():
+    atualizarMapaResumo()
+
+    
+    planilha = load_workbook(novaMemoria)
+    retencoes = planilha["Retenções"]
+    sequencial = planilha["Sequencial"]
+
+    celulas = {
+    "PENSÃO ALIMENTÍCIA": retencoes['E28']
+    }
+    
+    buscarValores(celulas,-1,tgrj0801p,6,0)
+
+    celulas  ={
+    '3190.11.25' :  sequencial["F37"],  
+    }
+    
+    buscarValores(celulas,0,tgrj0807p,3,0)
+
+
+    planilha.save(novaMemoria)
+    
+
 hoje = date.today()
 meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", 
-         "Dezembro"]
+         "Dezembro","13","13_2"]
 
 processos = ["PGOV0822P","PGOV0832P","TGRJ0801P","TGRJ0802P","TGRJ0807P", "TGRJ0808P"]
     
@@ -315,21 +347,25 @@ navegador = webdriver.Firefox()
 pasta = r"C:/Users/"+ os.getlogin() +r"/OneDrive - SEFAZ-RJ/Folha EGE/Exercício " + str(hoje.year) + '/' + str(mes) + "." + str(hoje.year) + ' - ' + processoSEI.replace("/", "_")
 novaMemoria = pasta + "/" + "Memória de Cálculo - " + str(mes) + "." + str(hoje.year) + ".xlsx"
 
-
 credito,lme = verificarSaldo()
 
-baixarRelatorios()
+# baixarRelatorios()
 
+navegador.quit()
 
 tgrj0807p = pasta + r"\TGRJ0807P_" + meses[int(mes) - 1] +".pdf"
 pgov0832p = pasta + r"\PGOV0832P_" + meses[int(mes) - 1] +".pdf"
 tgrj0802p = pasta + r"\TGRJ0802P_" + meses[int(mes) - 1] +".pdf"
 tgrj0801p = pasta + r"\TGRJ0801P_" + meses[int(mes) - 1] +".pdf"
 
-if os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p):
-    atualizarMapaResumo()
-    atualizarRetencoes()
-    atualizarSequencial()
-
+if int(mes) > 12:
+    atualizarDecimoTerceiro()
+    
 else:
-    print("Arquivos insuficientes!")
+    if os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p) and os.path.isfile(tgrj0801p):
+        atualizarMapaResumo()
+        atualizarRetencoes()
+        atualizarSequencial()
+
+    else:
+        print("Arquivos insuficientes!")
