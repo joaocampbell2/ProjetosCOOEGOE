@@ -6,7 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 import os
 from openpyxl import load_workbook
-from marinetteSEFAZ import loginSEI, obterProcessosDeBloco,procurarArquivos, buscarInformacaoEmDocumento, escreverAnotacao, salvarPlanilha
+from marinetteSEFAZ import loginSEI, obterProcessosDeBloco,procurarArquivos, buscarInformacaoEmDocumento, escreverAnotacao, salvarPlanilha,buscarProcessoEmBloco
     
 def encontrarFormaDePagamento():
     despachos = procurarArquivos(nav,"Despacho sobre Autorização de Despesa")
@@ -34,7 +34,7 @@ def encontrarFormaDePagamento():
             if "DEPÓSITO JUDICIAL" in formaPagamentoDespacho:
                 return "Guia"
 
-            regexBanco = r"(ITAÚ|NUBANK|SANTANDER|Santander|C6 Bank|BANCO DO BRASIL|SICOOB|C6 BANK|PICPAY|CAIXA|CEF|SICRED|BANCO C6|MERCADO PAGO|ITAU)"
+            regexBanco = r"(ITAÚ|Caixa Econômica|NUBANK|SANTANDER|Santander|C6 Bank|BANCO DO BRASIL|SICOOB|C6 BANK|PICPAY|CAIXA|CEF|SICRED|BANCO C6|MERCADO PAGO|ITAU)"
             banco = buscarInformacaoEmDocumento(nav,despacho,regexBanco,"Rio de Janeiro")
             if banco == None:
                 banco = ""
@@ -117,24 +117,8 @@ if bloco not in wb.sheetnames:
     wb.create_sheet(bloco,0)
     wb.save(marinette)
 
-df = pd.read_excel(marinette, sheet_name=bloco, dtype={'VALIDADE': str})
 
 tipo = int(input("Qual o tipo de bloco?\n1) Fiança\n2) Execução Fiscal\n3) Caução\n"))
-
-
-try:
-    print(df["PROCESSO"].values)
-
-except:
-
-    if tipo == 1:
-        colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL","VALOR EXTRAORÇAMENTÁRIA",
-                   "VALOR ORÇAMENTÁRIA",  "OB EXTRAORÇAMENTÁRIA", "OB ORÇAMENTÁRIA", "UPLOAD EXTRAORÇAMENTÁRIA",
-                   "UPLOAD ORÇAMENTÁRIA","COMPROVANTES NOTIFICADOS", "DESPACHO","NOTIFICADO PARA ASSINATURA"]
-    if tipo == 2 or tipo ==3:
-        colunas = ["PROCESSO", "FORMA DE PAGAMENTO", "VALIDADE",'PRAZO',"ACOMPANHAMENTO ESPECIAL", "VALOR EXTRAORÇAMENTÁRIA", "OB EXTRAORÇAMENTÁRIA"]
-    df = pd.DataFrame(columns=colunas, index=None)
-
 
 match tipo:
     case 1:
@@ -143,9 +127,6 @@ match tipo:
         tipo = "EXECUÇÃO FISCAL"
     case 3:
         tipo = "CAUÇÃO"
-
-
-salvarPlanilha(df, marinette, bloco)
 
 nav = webdriver.Firefox()
 
@@ -158,13 +139,15 @@ for i in range(1,len(processos)):
         WebDriverWait(nav,20).until(EC.invisibility_of_element_located(((By.XPATH, "//div[@class = 'sparkling-modal-close']"))))
         WebDriverWait(nav,20).until(EC.presence_of_element_located(((By.XPATH, "//tbody//tr"))))
         processo = nav.find_elements(By.XPATH, "//tbody//tr")[i]
-        nProcesso = processo.find_element(By.XPATH, './/td[3]//a').text
+        textoProcesso = processo.text
         
-        if nProcesso not in df['PROCESSO'].values or pd.isna(df.loc[df[df["PROCESSO"] == nProcesso].index[0], "FORMA DE PAGAMENTO"]):                          
+        linkProcesso = buscarProcessoEmBloco(nav,i)    
+        nProcesso = linkProcesso.text
+        
+        if "FORMA DE PAGAMENTO" not in textoProcesso.upper():                          
             
             if tipo == "CAUÇÃO":
-                df.loc[len(df)] = {"PROCESSO":nProcesso, "VALIDADE": '-'}
-                salvarPlanilha(df,marinette,bloco)
+
                 continue
             
             validade = "-"
@@ -183,7 +166,6 @@ for i in range(1,len(processos)):
                 if "Depósito" not in formaDePagamento:
                     validade = encontrarValidade()
                 
-                df.loc[len(df)] = {"PROCESSO":nProcesso,"FORMA DE PAGAMENTO": formaDePagamento,"VALIDADE": validade}
                 
                 texto = ["Forma de Pagamento: " + formaDePagamento]
                 if validade != "-":
@@ -199,7 +181,6 @@ for i in range(1,len(processos)):
             
             try:
                 escreverAnotacao(nav,texto,nProcesso)    
-                salvarPlanilha(df,marinette,bloco)
             except:
                 traceback.print_exc()
                 continue
